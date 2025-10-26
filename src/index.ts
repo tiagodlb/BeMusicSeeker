@@ -1,7 +1,15 @@
-import { Elysia } from "elysia"
+import cluster from 'node:cluster';
+import { availableParallelism } from 'node:os';
 
-const app = new Elysia()
-  .get('/', () => 'Hello from Elysia')
-  .listen(3000);
+if (cluster.isPrimary) {
+  const numCPUs = availableParallelism();
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
 
-console.log(`elysia is running at ${app.server?.hostname}:${app.server?.port}\n`);
+  cluster.on("exit", (worker) => {
+    process.exit(1);
+  });
+} else {
+  import ("./server")
+}
