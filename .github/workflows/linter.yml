@@ -21,15 +21,9 @@ jobs:
       - name: Install dependencies
         run: bun install
        
-      - name: Oxlint Check
-        run: |
-          cd ${{ github.workspace }}
+      - name: Run Oxlint
+        run: bunx oxlint --type-aware
 
-          if ! bunx oxlint --type-aware | grep -q "0 errors"; then
-            echo "Deploy falhou, erro no linter."
-            exit 1 
-          fi
-
-      - name: Eslint Check was succesfull
-        run: |
-          echo "Eslint Check was successfull."
+      - name: Linter check passed
+        if: success()
+        run: echo "Oxlint check was successful."
