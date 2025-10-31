@@ -1,0 +1,35 @@
+name: Eslint Check
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+       
+      - name: Oxlint Check
+        run: |
+          cd ${{ github.workspace }}
+
+          if ! bunx oxlint --type-aware | grep -q "0 errors"; then
+            echo "Deploy falhou, erro no linter."
+            exit 1 
+          fi
+
+      - name: Eslint Check was succesfull
+        run: |
+          echo "Eslint Check was successfull."
