@@ -22,7 +22,7 @@ jobs:
         run: bun install
        
       - name: Run Oxlint
-        run: bunx oxlint --type-aware
+        run: bunx oxlint --type-aware --deny-warnings
 
       - name: Linter check passed
         if: success()
