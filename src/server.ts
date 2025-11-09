@@ -4,7 +4,7 @@ import { openapi } from "@elysiajs/openapi";
 import { cors } from "@elysiajs/cors";
 import { betterAuth } from "./core/auth/macro";
 
-const server = new Elysia()
+const _server = new Elysia()
   .use(
     openapi({
       documentation: {
