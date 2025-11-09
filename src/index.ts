@@ -7,9 +7,9 @@ if (Bun.env.DEVELOPMENT_ENV == 'production' && cluster.isPrimary) {
     cluster.fork();
   }
 
-  cluster.on("exit", (worker) => {
+  cluster.on("exit", (_workers) => {
     process.exit(1);
   });
 } else {
-  import ("./server")
+  await import ("./server")
 }

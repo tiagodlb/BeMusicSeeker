@@ -32,4 +32,3 @@ const server = new Elysia()
   .listen(3000);
 
 console.log("Running on http://localhost:3000");
-server.handle(new Request("http://localhost:3000/v1")).then(console.log);

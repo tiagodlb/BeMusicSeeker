@@ -86,7 +86,7 @@ export type User = {
     bio: string | null;
     profile_picture_url: string | null;
     is_artist: Generated<boolean>;
-    social_links: unknown | null;
+    social_links: string;
     created_at: Generated<Timestamp>;
     updated_at: Generated<Timestamp>;
 };

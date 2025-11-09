@@ -69,7 +69,7 @@ model User {
   bio                 String?        @db.Text
   profile_picture_url String?        @db.VarChar(500)
   is_artist           Boolean        @default(false)
-  social_links        Json?          @db.JsonB
+  social_links        String         @db.VarChar(255)
   created_at          DateTime       @default(now()) @db.Timestamp()
   updated_at          DateTime       @default(now()) @updatedAt @db.Timestamp()
 
