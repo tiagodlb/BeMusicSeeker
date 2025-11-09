@@ -1,9 +1,7 @@
-import { PrismaClient } from "@prisma/client";
 import { status } from "elysia";
 import { AuthModel } from "./model";
-import { AuthRepository } from "@/core/db/repositories/auth.repository";
+import { AuthRepository } from "@/db/repositories/auth";
 import { privateKey, publicKey } from "../../core/utils";
-import { redisService } from "../../core/redis";
 
 const db = new PrismaClient();
 
@@ -12,32 +10,7 @@ export interface JWTService {
   verify(token?: string): Promise<false | Record<string, any>>;
 }
 
-interface TokenBlackList {
-  tokens: Set<string>;
-  add(token: string): Promise<void>;
-  has(token: string): Promise<boolean>;
-  clear(token: string): Promise<void>;
-}
-
-class Token implements TokenBlackList {
-  tokens: Set<string> = new Set();
-
-  async add(token: string): Promise<void> {
-    await redisService.set(`token:blacklist:${Date.now()}`, token, 86400);
-  }
-
-  async has(token: string): Promise<boolean> {
-    return await redisService.exists(token);
-  }
-
-  async clear(token: string): Promise<void> {
-    await redisService.del(token);
-  }
-}
-
 export abstract class AuthService {
-  private static blacklist: TokenBlackList = new Token();
-
   /**
    * Registra um novo usuário no sistema.
    * @param userData Dados do usuário validados pelo DTO.

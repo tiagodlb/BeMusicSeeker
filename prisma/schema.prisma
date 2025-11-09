@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator kysely {
+  provider = "prisma-kysely"
+  output = "../src/db"
+  fileName = "types.ts"
+  enumFileName = "enums.ts"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum VoteType {
+  upvote
+  downvote
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  flagged
+  rejected
+}
+
+enum NotificationType {
+  comment
+  vote
+  follow
+  new_song
+  mention
+}
+
+enum RelatedType {
+  post
+  comment
+  song
+  user
+}
+
+enum ReportedType {
+  song
+  post
+  comment
+}
+
+enum ReportStatus {
+  pending
+  reviewed
+  resolved
+  dismissed
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id                  Int            @id @default(autoincrement())
+  email               String         @unique @db.VarChar(255)
+  password_hash       String         @db.VarChar(255)
+  name                String         @db.VarChar(255)
+  bio                 String?        @db.Text
+  profile_picture_url String?        @db.VarChar(500)
+  is_artist           Boolean        @default(false)
+  social_links        Json?          @db.JsonB
+  created_at          DateTime       @default(now()) @db.Timestamp()
+  updated_at          DateTime       @default(now()) @updatedAt @db.Timestamp()
+
+  // Relations
+  songs               Song[]         @relation("ArtistSongs")
+  posts               Post[]         @relation("UserPosts")
+  votes               Vote[]         @relation("UserVotes")
+  comments            Comment[]      @relation("UserComments")
+  followers           Follow[]       @relation("UserFollowers")
+  following           Follow[]       @relation("UserFollowing")
+  saved_songs         SavedSong[]    @relation("UserSavedSongs")
+  notifications       Notification[] @relation("UserNotifications")
+  reports             Report[]       @relation("UserReports")
+
+  @@index([email])
+  @@index([is_artist])
+  @@map("users")
+}
+
+model Song {
+  id                 Int              @id @default(autoincrement())
+  title              String           @db.VarChar(255)
+  description        String?          @db.Text
+  artist_id          Int
+  genre              String           @db.VarChar(100)
+  duration_seconds   Int
+  file_url           String           @db.VarChar(500)
+  cover_image_url    String?          @db.VarChar(500)
+  play_count         Int              @default(0)
+  moderation_status  ModerationStatus @default(pending)
+  report_count       Int              @default(0)
+  created_at         DateTime         @default(now()) @db.Timestamp()
+  updated_at         DateTime         @default(now()) @updatedAt @db.Timestamp()
+
+  // Relations
+  artist             User             @relation("ArtistSongs", fields: [artist_id], references: [id], onDelete: Cascade)
+  posts              Post[]           @relation("SongPosts")
+  saved_by           SavedSong[]      @relation("SavedSongs")
+
+  @@index([artist_id])
+  @@index([genre])
+  @@index([moderation_status])
+  @@index([created_at(sort: Desc)])
+  @@map("songs")
+}
+
+model Post {
+  id              Int         @id @default(autoincrement())
+  user_id         Int
+  song_id         Int
+  content         String      @db.Text
+  upvotes_count   Int         @default(0)
+  downvotes_count Int         @default(0)
+  comments_count  Int         @default(0)
+  created_at      DateTime    @default(now()) @db.Timestamp()
+  updated_at      DateTime    @default(now()) @updatedAt @db.Timestamp()
+
+  // Relations
+  user            User        @relation("UserPosts", fields: [user_id], references: [id], onDelete: Cascade)
+  song            Song        @relation("SongPosts", fields: [song_id], references: [id], onDelete: Cascade)
+  votes           Vote[]      @relation("PostVotes")
+  comments        Comment[]   @relation("PostComments")
+  tags            PostTag[]   @relation("PostTags")
+
+  @@index([user_id])
+  @@index([song_id])
+  @@index([created_at(sort: Desc)])
+  @@index([upvotes_count(sort: Desc)])
+  @@map("posts")
+}
+
+model Vote {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  post_id    Int
+  vote_type  VoteType
+  created_at DateTime @default(now()) @db.Timestamp()
+
+  // Relations
+  user       User     @relation("UserVotes", fields: [user_id], references: [id], onDelete: Cascade)
+  post       Post     @relation("PostVotes", fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, post_id])
+  @@index([post_id])
+  @@index([user_id])
+  @@map("votes")
+}
+
+model Comment {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  post_id    Int
+  content    String   @db.Text
+  created_at DateTime @default(now()) @db.Timestamp()
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp()
+
+  // Relations
+  user       User     @relation("UserComments", fields: [user_id], references: [id], onDelete: Cascade)
+  post       Post     @relation("PostComments", fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id])
+  @@index([user_id])
+  @@index([created_at(sort: Desc)])
+  @@map("comments")
+}
+
+model Follow {
+  id           Int      @id @default(autoincrement())
+  follower_id  Int
+  following_id Int
+  created_at   DateTime @default(now()) @db.Timestamp()
+
+  // Relations
+  follower     User     @relation("UserFollowing", fields: [follower_id], references: [id], onDelete: Cascade)
+  following    User     @relation("UserFollowers", fields: [following_id], references: [id], onDelete: Cascade)
+
+  @@unique([follower_id, following_id])
+  @@index([follower_id])
+  @@index([following_id])
+  @@map("follows")
+}
+
+model SavedSong {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  song_id    Int
+  created_at DateTime @default(now()) @db.Timestamp()
+
+  // Relations
+  user       User     @relation("UserSavedSongs", fields: [user_id], references: [id], onDelete: Cascade)
+  song       Song     @relation("SavedSongs", fields: [song_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, song_id])
+  @@index([user_id])
+  @@index([song_id])
+  @@map("saved_songs")
+}
+
+model PostTag {
+  id         Int      @id @default(autoincrement())
+  post_id    Int
+  tag        String   @db.VarChar(50)
+  created_at DateTime @default(now()) @db.Timestamp()
+
+  // Relations
+  post       Post     @relation("PostTags", fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id])
+  @@index([tag])
+  @@map("post_tags")
+}
+
+model Notification {
+  id           Int              @id @default(autoincrement())
+  user_id      Int
+  type         NotificationType
+  content      String           @db.Text
+  related_id   Int?
+  related_type RelatedType?
+  is_read      Boolean          @default(false)
+  created_at   DateTime         @default(now()) @db.Timestamp()
+
+  // Relations
+  user         User             @relation("UserNotifications", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([is_read])
+  @@index([created_at(sort: Desc)])
+  @@map("notifications")
+}
+
+model Report {
+  id            Int          @id @default(autoincrement())
+  reporter_id   Int
+  reported_type ReportedType
+  reported_id   Int
+  reason        String       @db.Text
+  status        ReportStatus @default(pending)
+  created_at    DateTime     @default(now()) @db.Timestamp()
+  reviewed_at   DateTime?    @db.Timestamp()
+
+  // Relations
+  reporter      User         @relation("UserReports", fields: [reporter_id], references: [id], onDelete: Cascade)
+
+  @@index([reporter_id])
+  @@index([reported_type, reported_id])
+  @@index([status])
+  @@map("reports")
+}

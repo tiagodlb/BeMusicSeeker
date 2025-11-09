@@ -1,10 +1,10 @@
 import Elysia, { status } from "elysia";
-import { AuthService } from "./auth.service";
-import { AuthModel } from "./auth.dto";
-import { guards } from "@/core/security/guards";
+import { AuthService } from "./service";
+import { AuthModel } from "./model";
+import { auth_guard } from "../../core/security/auth_guards";
 
 export const authController = new Elysia({ prefix: "/auth" })
-  .use(guards)
+  .use(auth_guard)
   .post(
     "/register",
     async ({ body }) => {
