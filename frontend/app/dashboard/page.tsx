@@ -357,7 +357,7 @@ function RecommendationCardComponent({
   onVote: (id: string, type: 'up' | 'down') => void 
 }) {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [progress, _setProgress] = useState(0)
 
   return (
     <article className={styles.card}>
