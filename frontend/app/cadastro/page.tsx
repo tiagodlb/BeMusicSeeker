@@ -269,7 +269,7 @@ export default function CadastroPage() {
               <>
                 {/* Header */}
                 <div className="text-center mb-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[oklch(0.55_0.22_240)]/20">
+                  <div className="w-16 h-16 bg-linear-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[oklch(0.55_0.22_240)]/20">
                     <svg
                       className="w-8 h-8 text-white"
                       fill="none"
@@ -530,7 +530,7 @@ export default function CadastroPage() {
                     {errors.password && (
                       <p className="mt-2 text-sm text-red-500 flex items-center gap-1.5">
                         <svg
-                          className="w-4 h-4 flex-shrink-0"
+                          className="w-4 h-4 shrink-0"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -724,7 +724,7 @@ export default function CadastroPage() {
                         }`}
                       >
                         <div
-                          className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                             userType === type.id
                               ? "bg-[oklch(0.55_0.22_240)] text-white"
                               : "bg-[oklch(0.96_0.01_264)] text-[oklch(0.5_0.02_264)]"
@@ -741,7 +741,7 @@ export default function CadastroPage() {
                           </div>
                         </div>
                         <div
-                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                             userType === type.id
                               ? "border-[oklch(0.55_0.22_240)] bg-[oklch(0.55_0.22_240)]"
                               : "border-[oklch(0.8_0.01_264)]"

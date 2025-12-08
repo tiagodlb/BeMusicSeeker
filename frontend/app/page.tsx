@@ -277,7 +277,7 @@ export default function LandingPage() {
               </video>
             ))}
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+            <div className="absolute inset-0 bg-linear-to-b from-black/70 via-black/50 to-black/80" />
             {/* Noise texture overlay */}
             <div className="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')]" />
           </div>
@@ -295,7 +295,7 @@ export default function LandingPage() {
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-[0.95] tracking-tight mb-8 text-balance animate-[fadeInUp_0.6s_ease-out_0.1s_both]">
               Sua Musica Merece
               <br />
-              <span className="bg-gradient-to-r from-[oklch(0.65_0.18_200)] to-[oklch(0.55_0.22_240)] bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-[oklch(0.65_0.18_200)] to-[oklch(0.55_0.22_240)] bg-clip-text text-transparent">
                 Ser Ouvida
               </span>
             </h1>
@@ -381,7 +381,7 @@ export default function LandingPage() {
                   className="text-center"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[oklch(0.65_0.18_200)] to-[oklch(0.55_0.22_240)] bg-clip-text text-transparent mb-2">
+                  <div className="text-4xl md:text-5xl font-bold bg-linear-to-r from-[oklch(0.65_0.18_200)] to-[oklch(0.55_0.22_240)] bg-clip-text text-transparent mb-2">
                     {stat.value}
                   </div>
                   <div className="text-white/60 font-medium">{stat.label}</div>
@@ -394,7 +394,7 @@ export default function LandingPage() {
         {/* Artist Benefits Section */}
         <section id="artistas" className="py-24 relative">
           {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-[oklch(0.55_0.22_240)]/5 to-transparent" />
+          <div className="absolute top-0 right-0 w-1/2 h-full bg-linear-to-l from-[oklch(0.55_0.22_240)]/5 to-transparent" />
 
           <div className="max-w-7xl mx-auto px-6 relative">
             <div className="text-center mb-16">
@@ -419,7 +419,7 @@ export default function LandingPage() {
                   className="group p-8 bg-white rounded-2xl border border-[oklch(0.9_0.01_264)] hover:border-[oklch(0.55_0.22_240)]/30 hover:shadow-xl hover:shadow-[oklch(0.55_0.22_240)]/5 transition-all duration-300 hover:-translate-y-1"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 bg-linear-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <svg
                       className="w-6 h-6 text-white"
                       fill="none"
@@ -495,7 +495,7 @@ export default function LandingPage() {
                   </p>
 
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)]" />
+                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)]" />
                     <div>
                       <div className="font-bold text-white">
                         {testimonial.name}
@@ -520,7 +520,7 @@ export default function LandingPage() {
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               {/* Left: Visual */}
               <div className="relative">
-                <div className="aspect-square bg-gradient-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-3xl overflow-hidden shadow-2xl shadow-[oklch(0.55_0.22_240)]/20">
+                <div className="aspect-square bg-linear-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-3xl overflow-hidden shadow-2xl shadow-[oklch(0.55_0.22_240)]/20">
                   {/* Mock UI elements */}
                   <div className="absolute inset-4 bg-white/10 backdrop-blur-xl rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-6">
@@ -604,7 +604,7 @@ export default function LandingPage() {
                       className="flex items-center gap-3 p-4 bg-[oklch(0.96_0.01_264)] rounded-xl"
                       style={{ animationDelay: `${index * 0.05}s` }}
                     >
-                      <div className="w-8 h-8 bg-[oklch(0.55_0.22_240)]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 bg-[oklch(0.55_0.22_240)]/10 rounded-lg flex items-center justify-center shrink-0">
                         <svg
                           className="w-4 h-4 text-[oklch(0.55_0.22_240)]"
                           fill="none"
@@ -633,11 +633,11 @@ export default function LandingPage() {
         {/* CTA Section */}
         <section className="py-24 relative overflow-hidden">
           {/* Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)]" />
+          <div className="absolute inset-0 bg-linear-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)]" />
 
           {/* Decorative circles */}
           <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 border border-white/10 rounded-full" />
-          <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[32rem] h-[32rem] border border-white/5 rounded-full" />
+          <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-lg h-128 border border-white/5 rounded-full" />
           <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-64 h-64 border border-white/10 rounded-full" />
 
           <div className="max-w-4xl mx-auto px-6 text-center relative">

@@ -1,13 +1,64 @@
 'use client'
 
-import { useState } from 'react'
-import styles from './dashboard.module.css'
+import { SetStateAction, useState } from 'react'
+import Link from 'next/link'
+import { 
+  Home, 
+  Zap, 
+  BarChart3, 
+  Compass, 
+  Heart, 
+  Users, 
+  Plus, 
+  ChevronDown,
+  Menu,
+  Search,
+  Bell,
+  Settings,
+  LayoutList,
+  LayoutGrid,
+  Music,
+  MoreHorizontal,
+  Play,
+  Pause,
+  Volume2,
+  ThumbsUp,
+  ThumbsDown,
+  MessageCircle,
+  Share2
+} from 'lucide-react'
 
-interface RecommendationCard {
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { Slider } from '@/components/ui/slider'
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+
+interface Recommendation {
   id: string
   user: {
     name: string
     initials: string
+    avatar?: string
     profileUrl: string
   }
   timestamp: string
@@ -27,13 +78,13 @@ interface RecommendationCard {
   userVote?: 'up' | 'down' | null
 }
 
-const mockRecommendations: RecommendationCard[] = [
+const mockRecommendations: Recommendation[] = [
   {
     id: '1',
     user: {
-      name: 'Mariana Lima',
+      name: 'Maria Lima',
       initials: 'ML',
-      profileUrl: '/perfil/mariana-lima'
+      profileUrl: '/perfil/maria-lima'
     },
     timestamp: '2 horas atrás',
     music: {
@@ -84,15 +135,280 @@ const mockRecommendations: RecommendationCard[] = [
   }
 ]
 
+const navItems = [
+  { href: '/dashboard', label: 'Início', icon: Home, active: true },
+  { href: '/trending', label: 'Em Alta', icon: Zap },
+  { href: '/rankings', label: 'Rankings', icon: BarChart3 },
+  { href: '/explorar', label: 'Explorar Gêneros', icon: Compass },
+]
+
+const libraryItems = [
+  { href: '/favoritos', label: 'Meus Favoritos', icon: Heart },
+  { href: '/seguindo', label: 'Seguindo', icon: Users },
+]
+
+function SidebarContent() {
+  return (
+    <>
+      <div className="p-6 border-b border-border">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-linear-to-br from-primary to-purple-600 flex items-center justify-center">
+            <Music className="w-6 h-6 text-primary-foreground" />
+          </div>
+          <span className="font-semibold text-lg">BeMusicShare</span>
+        </Link>
+      </div>
+
+      <nav className="flex-1 p-4">
+        <div className="mb-6">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-2">
+            Menu
+          </p>
+          <ul className="space-y-1">
+            {navItems.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    item.active 
+                      ? "bg-primary/10 text-primary" 
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mb-6">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-2">
+            Biblioteca
+          </p>
+          <ul className="space-y-1">
+            {libraryItems.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
+
+      <div className="p-4">
+        <Button asChild className="w-full">
+          <Link href="/nova-recomendacao">
+            <Plus className="w-4 h-4 mr-2" />
+            Criar Recomendação
+          </Link>
+        </Button>
+      </div>
+
+      <Separator />
+
+      <div className="p-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-2">
+              <Avatar className="w-9 h-9">
+                <AvatarImage src="" />
+                <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-sm">
+                  TS
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium">Tiago Silva</p>
+                <p className="text-xs text-muted-foreground">Curador</p>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
+            <DropdownMenuItem>Configurações</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive">Sair</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
+  )
+}
+
+function RecommendationCard({ 
+  data, 
+  onVote 
+}: { 
+  data: Recommendation
+  onVote: (id: string, type: 'up' | 'down') => void 
+}) {
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [progress, setProgress] = useState([0])
+  const [volume, setVolume] = useState([75])
+
+  return (
+    <Card>
+      <CardHeader className="pb-0">
+        <div className="flex items-center gap-3">
+          <Avatar>
+            <AvatarImage src={data.user.avatar} />
+            <AvatarFallback className="bg-linear-to-br from-emerald-500 to-blue-600 text-white">
+              {data.user.initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <Link 
+              href={data.user.profileUrl} 
+              className="text-sm font-medium hover:underline"
+            >
+              {data.user.name}
+            </Link>
+            <p className="text-xs text-muted-foreground">{data.timestamp}</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Salvar</DropdownMenuItem>
+              <DropdownMenuItem>Copiar link</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive">Denunciar</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-4">
+        <div className="flex gap-4 mb-4">
+          <div className="w-28 h-28 rounded-lg bg-linear-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
+            {data.music.coverUrl ? (
+              <img 
+                src={data.music.coverUrl} 
+                alt={data.music.title}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            ) : (
+              <Music className="w-10 h-10 text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-lg">{data.music.title}</h3>
+            <p className="text-sm text-muted-foreground mb-2">{data.music.artist}</p>
+            <p className="text-sm text-muted-foreground line-clamp-3">
+              {data.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {data.tags.map((tag) => (
+            <Badge key={tag} variant="secondary">
+              #{tag}
+            </Badge>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+          <Button 
+            size="icon" 
+            className="h-9 w-9 rounded-full"
+            onClick={() => setIsPlaying(!isPlaying)}
+          >
+            {isPlaying ? (
+              <Pause className="w-4 h-4" />
+            ) : (
+              <Play className="w-4 h-4 ml-0.5" />
+            )}
+          </Button>
+          
+          <div className="flex-1 space-y-1">
+            <Slider 
+              value={progress} 
+              onValueChange={setProgress}
+              max={100} 
+              step={1}
+              className="cursor-pointer"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>0:00</span>
+              <span>{data.music.duration}</span>
+            </div>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Volume2 className="w-4 h-4" />
+            </Button>
+            <Slider 
+              value={volume} 
+              onValueChange={setVolume}
+              max={100} 
+              step={1}
+              className="w-16 cursor-pointer"
+            />
+          </div>
+        </div>
+      </CardContent>
+
+      <CardFooter className="border-t pt-4">
+        <div className="flex items-center gap-2 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "gap-2",
+              data.userVote === 'up' && "text-green-500 hover:text-green-500"
+            )}
+            onClick={() => onVote(data.id, 'up')}
+          >
+            <ThumbsUp className="w-4 h-4" />
+            {data.stats.upvotes}
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "gap-2",
+              data.userVote === 'down' && "text-red-500 hover:text-red-500"
+            )}
+            onClick={() => onVote(data.id, 'down')}
+          >
+            <ThumbsDown className="w-4 h-4" />
+            {data.stats.downvotes}
+          </Button>
+          
+          <Button variant="ghost" size="sm" className="gap-2">
+            <MessageCircle className="w-4 h-4" />
+            {data.stats.comments}
+          </Button>
+
+          <div className="flex-1" />
+
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Share2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
+  )
+}
+
 export default function DashboardPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [recommendations, setRecommendations] = useState(mockRecommendations)
-  const [filters, setFilters] = useState({
-    period: 'week',
-    genre: 'all',
-    sort: 'votes'
-  })
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [viewMode, setViewMode] = useState('list')
 
   const handleVote = (id: string, voteType: 'up' | 'down') => {
     setRecommendations(prev => prev.map(rec => {
@@ -128,550 +444,140 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={styles.layout}>
-      {/* Overlay mobile */}
-      <div 
-        className={`${styles.overlay} ${sidebarOpen ? styles.visible : ''}`}
-        onClick={() => setSidebarOpen(false)}
-      />
-
-      {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.open : ''}`}>
-        <div className={styles.sidebarHeader}>
-          <a href="/" className={styles.logo}>
-            <div className={styles.logoIcon}>
-              <MusicIcon />
-            </div>
-            <span className={styles.logoText}>BeMusicShare</span>
-          </a>
-        </div>
-
-        <nav className={styles.sidebarNav}>
-          <div className={styles.navSection}>
-            <h2 className={styles.navSectionTitle}>Menu</h2>
-            <ul className={styles.navList}>
-              <li>
-                <a href="/dashboard" className={`${styles.navLink} ${styles.active}`}>
-                  <HomeIcon />
-                  <span>Início</span>
-                </a>
-              </li>
-              <li>
-                <a href="/trending" className={styles.navLink}>
-                  <TrendingIcon />
-                  <span>Em Alta</span>
-                </a>
-              </li>
-              <li>
-                <a href="/rankings" className={styles.navLink}>
-                  <RankingIcon />
-                  <span>Rankings</span>
-                </a>
-              </li>
-              <li>
-                <a href="/explorar" className={styles.navLink}>
-                  <ExploreIcon />
-                  <span>Explorar Gêneros</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div className={styles.navSection}>
-            <h2 className={styles.navSectionTitle}>Biblioteca</h2>
-            <ul className={styles.navList}>
-              <li>
-                <a href="/favoritos" className={styles.navLink}>
-                  <HeartIcon />
-                  <span>Meus Favoritos</span>
-                </a>
-              </li>
-              <li>
-                <a href="/seguindo" className={styles.navLink}>
-                  <UsersIcon />
-                  <span>Seguindo</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </nav>
-
-        <div className={styles.sidebarCta}>
-          <a href="/nova-recomendacao" className={styles.btnPrimary}>
-            <PlusIcon />
-            Criar Recomendação
-          </a>
-        </div>
-
-        <div className={styles.sidebarFooter}>
-          <button className={styles.userMenu}>
-            <div className={styles.userAvatar}>TS</div>
-            <div className={styles.userInfo}>
-              <div className={styles.userName}>Tiago Silva</div>
-              <div className={styles.userRole}>Curador</div>
-            </div>
-            <ChevronDownIcon />
-          </button>
-        </div>
+    <div className="min-h-screen bg-background">
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 lg:border-r lg:bg-card">
+        <SidebarContent />
       </aside>
 
       {/* Main Content */}
-      <main className={styles.main}>
+      <div className="lg:pl-64">
         {/* Header */}
-        <header className={styles.header}>
-          <button 
-            className={styles.mobileMenuToggle}
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Abrir menu"
-          >
-            <MenuIcon />
-          </button>
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+          <div className="flex h-16 items-center justify-around gap-6 px-4 sm:px-6 lg:px-8">
+            {/* Mobile Menu */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <SidebarContent />
+              </SheetContent>
+            </Sheet>
 
-          <div className={styles.searchContainer}>
-            <div className={styles.searchBox}>
-              <SearchIcon className={styles.searchIcon} />
-              <input 
-                type="search"
-                className={styles.searchInput}
-                placeholder="Buscar músicas, artistas, pessoas..."
-              />
+            {/* Search */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  type="search"
+                  placeholder="Buscar músicas, artistas, pessoas..."
+                  className="pl-9 border-black/30"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className={styles.headerActions}>
-            <button className={styles.headerBtn} aria-label="Notificações">
-              <BellIcon />
-              <span className={styles.notificationBadge} />
-            </button>
-            <button className={styles.headerBtn} aria-label="Configurações">
-              <SettingsIcon />
-            </button>
+            <div className="flex items-center gap-3 ml-4">
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Settings className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </header>
 
         {/* Content */}
-        <div className={styles.content}>
+        <main className="p-4 sm:p-6 lg:p-8">
           {/* Welcome */}
-          <section className={styles.welcomeSection}>
-            <h1 className={styles.welcomeTitle}>
-              Bem-vindo de volta, <span className={styles.highlight}>Tiago</span>
+          <section className="mb-8">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Bem-vindo de volta, <span className="text-primary">Tiago</span>
             </h1>
-            <p className={styles.welcomeSubtitle}>
-              Você tem <span className={styles.highlight}>3 notificações</span> não lidas
+            <p className="text-muted-foreground">
+              Você tem <span className="text-primary font-medium">3 notificações</span> não lidas
             </p>
           </section>
 
           {/* Filters */}
-          <section className={styles.filtersSection}>
-            <div className={styles.filterGroup}>
-              <label htmlFor="filter-period" className={styles.filterLabel}>Período</label>
-              <select 
-                id="filter-period"
-                className={styles.filterSelect}
-                value={filters.period}
-                onChange={(e) => setFilters(f => ({ ...f, period: e.target.value }))}
-              >
-                <option value="today">Hoje</option>
-                <option value="week">Última Semana</option>
-                <option value="month">Último Mês</option>
-                <option value="all">Todos os Tempos</option>
-              </select>
+          <section className="flex flex-wrap items-center gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase">Período</span>
+              <Select defaultValue="week">
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Hoje</SelectItem>
+                  <SelectItem value="week">Última Semana</SelectItem>
+                  <SelectItem value="month">Último Mês</SelectItem>
+                  <SelectItem value="all">Todos os Tempos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className={styles.filterGroup}>
-              <label htmlFor="filter-genre" className={styles.filterLabel}>Gênero</label>
-              <select 
-                id="filter-genre"
-                className={styles.filterSelect}
-                value={filters.genre}
-                onChange={(e) => setFilters(f => ({ ...f, genre: e.target.value }))}
-              >
-                <option value="all">Todos</option>
-                <option value="rock">Rock</option>
-                <option value="pop">Pop</option>
-                <option value="hip-hop">Hip-Hop</option>
-                <option value="electronic">Eletrônica</option>
-                <option value="jazz">Jazz</option>
-                <option value="mpb">MPB</option>
-                <option value="indie">Indie</option>
-              </select>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase">Gênero</span>
+              <Select defaultValue="all">
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="rock">Rock</SelectItem>
+                  <SelectItem value="pop">Pop</SelectItem>
+                  <SelectItem value="hip-hop">Hip-Hop</SelectItem>
+                  <SelectItem value="electronic">Eletrônica</SelectItem>
+                  <SelectItem value="jazz">Jazz</SelectItem>
+                  <SelectItem value="mpb">MPB</SelectItem>
+                  <SelectItem value="indie">Indie</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className={styles.filterGroup}>
-              <label htmlFor="filter-sort" className={styles.filterLabel}>Ordenar</label>
-              <select 
-                id="filter-sort"
-                className={styles.filterSelect}
-                value={filters.sort}
-                onChange={(e) => setFilters(f => ({ ...f, sort: e.target.value }))}
-              >
-                <option value="votes">Mais Votados</option>
-                <option value="recent">Mais Recentes</option>
-                <option value="trending">Trending</option>
-                <option value="following">Meus Seguidos</option>
-              </select>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase">Ordenar</span>
+              <Select defaultValue="votes">
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="votes">Mais Votados</SelectItem>
+                  <SelectItem value="recent">Mais Recentes</SelectItem>
+                  <SelectItem value="trending">Trending</SelectItem>
+                  <SelectItem value="following">Meus Seguidos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className={styles.filtersSpacer} />
+            <div className="flex-1" />
 
-            <div className={styles.viewToggle}>
-              <button 
-                className={`${styles.viewToggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
-                onClick={() => setViewMode('list')}
-                aria-pressed={viewMode === 'list'}
-              >
-                <ListIcon />
-              </button>
-              <button 
-                className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                onClick={() => setViewMode('grid')}
-                aria-pressed={viewMode === 'grid'}
-              >
-                <GridIcon />
-              </button>
-            </div>
+            <ToggleGroup type="single" value={viewMode} onValueChange={(v: SetStateAction<string>) => v && setViewMode(v)}>
+              <ToggleGroupItem value="list" aria-label="Lista">
+                <LayoutList className="w-4 h-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" aria-label="Grade">
+                <LayoutGrid className="w-4 h-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
           </section>
 
           {/* Feed */}
-          <section className={styles.feed}>
-            {recommendations.map(rec => (
-              <RecommendationCardComponent 
+          <section className="space-y-6">
+            {recommendations.map((rec) => (
+              <RecommendationCard 
                 key={rec.id} 
                 data={rec} 
                 onVote={handleVote}
               />
             ))}
           </section>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
-  )
-}
-
-// Recommendation Card Component
-function RecommendationCardComponent({ 
-  data, 
-  onVote 
-}: { 
-  data: RecommendationCard
-  onVote: (id: string, type: 'up' | 'down') => void 
-}) {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [progress, _setProgress] = useState(0)
-
-  return (
-    <article className={styles.card}>
-      <div className={styles.cardHeader}>
-        <div className={styles.cardAvatar}>{data.user.initials}</div>
-        <div className={styles.cardUserInfo}>
-          <a href={data.user.profileUrl} className={styles.cardUserName}>
-            {data.user.name}
-          </a>
-          <span className={styles.cardTimestamp}>{data.timestamp}</span>
-        </div>
-        <button className={styles.cardMenuBtn} aria-label="Mais opções">
-          <MoreIcon />
-        </button>
-      </div>
-
-      <div className={styles.cardBody}>
-        <div className={styles.cardMusicInfo}>
-          <div className={styles.cardCover}>
-            <div className={styles.cardCoverPlaceholder}>
-              <MusicIcon />
-            </div>
-          </div>
-          <div className={styles.cardMusicDetails}>
-            <h2 className={styles.cardMusicTitle}>{data.music.title}</h2>
-            <p className={styles.cardMusicArtist}>{data.music.artist}</p>
-            <p className={styles.cardDescription}>{data.description}</p>
-          </div>
-        </div>
-
-        <div className={styles.cardTags}>
-          {data.tags.map(tag => (
-            <span key={tag} className={styles.tag}>#{tag}</span>
-          ))}
-        </div>
-
-        {/* Mini Player */}
-        <div className={styles.miniPlayer}>
-          <button 
-            className={styles.playerBtn}
-            onClick={() => setIsPlaying(!isPlaying)}
-            aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
-          >
-            {isPlaying ? <PauseIcon /> : <PlayIcon />}
-          </button>
-          <div className={styles.playerProgress}>
-            <div className={styles.progressBar}>
-              <div 
-                className={styles.progressFill} 
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className={styles.progressTimes}>
-              <span>0:00</span>
-              <span>{data.music.duration}</span>
-            </div>
-          </div>
-          <div className={styles.playerVolume}>
-            <button className={styles.volumeBtn} aria-label="Volume">
-              <VolumeIcon />
-            </button>
-            <input 
-              type="range" 
-              className={styles.volumeSlider}
-              min="0" 
-              max="100" 
-              defaultValue="75"
-            />
-          </div>
-        </div>
-      </div>
-
-      <footer className={styles.cardFooter}>
-        <button 
-          className={`${styles.actionBtn} ${styles.upvote} ${data.userVote === 'up' ? styles.active : ''}`}
-          onClick={() => onVote(data.id, 'up')}
-          aria-pressed={data.userVote === 'up'}
-        >
-          <ThumbUpIcon />
-          {data.stats.upvotes}
-        </button>
-        <button 
-          className={`${styles.actionBtn} ${styles.downvote} ${data.userVote === 'down' ? styles.active : ''}`}
-          onClick={() => onVote(data.id, 'down')}
-          aria-pressed={data.userVote === 'down'}
-        >
-          <ThumbDownIcon />
-          {data.stats.downvotes}
-        </button>
-        <button className={styles.actionBtn}>
-          <CommentIcon />
-          {data.stats.comments}
-        </button>
-        <div className={styles.actionSpacer} />
-        <button className={styles.actionBtn} aria-label="Compartilhar">
-          <ShareIcon />
-        </button>
-      </footer>
-    </article>
-  )
-}
-
-// Icons
-function MusicIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5.5" cy="17.5" r="2.5"/>
-      <circle cx="17.5" cy="15.5" r="2.5"/>
-      <path d="M8 17V5l12-2v12"/>
-    </svg>
-  )
-}
-
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-      <polyline points="9,22 9,12 15,12 15,22"/>
-    </svg>
-  )
-}
-
-function TrendingIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-    </svg>
-  )
-}
-
-function RankingIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/>
-      <line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-  )
-}
-
-function ExploreIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-    </svg>
-  )
-}
-
-function HeartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-    </svg>
-  )
-}
-
-function UsersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-      <path d="M16 3.13a4 4 0 010 7.75"/>
-    </svg>
-  )
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19"/>
-      <line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-  )
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-      <polyline points="6 9 12 15 18 9"/>
-    </svg>
-  )
-}
-
-function MenuIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
-    </svg>
-  )
-}
-
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8"/>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-    </svg>
-  )
-}
-
-function BellIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-      <path d="M13.73 21a2 2 0 01-3.46 0"/>
-    </svg>
-  )
-}
-
-function SettingsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
-    </svg>
-  )
-}
-
-function ListIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="8" y1="6" x2="21" y2="6"/>
-      <line x1="8" y1="12" x2="21" y2="12"/>
-      <line x1="8" y1="18" x2="21" y2="18"/>
-      <line x1="3" y1="6" x2="3.01" y2="6"/>
-      <line x1="3" y1="12" x2="3.01" y2="12"/>
-      <line x1="3" y1="18" x2="3.01" y2="18"/>
-    </svg>
-  )
-}
-
-function GridIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7"/>
-      <rect x="14" y="3" width="7" height="7"/>
-      <rect x="14" y="14" width="7" height="7"/>
-      <rect x="3" y="14" width="7" height="7"/>
-    </svg>
-  )
-}
-
-function MoreIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="1"/>
-      <circle cx="19" cy="12" r="1"/>
-      <circle cx="5" cy="12" r="1"/>
-    </svg>
-  )
-}
-
-function PlayIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <polygon points="5 3 19 12 5 21 5 3"/>
-    </svg>
-  )
-}
-
-function PauseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <rect x="6" y="4" width="4" height="16"/>
-      <rect x="14" y="4" width="4" height="16"/>
-    </svg>
-  )
-}
-
-function VolumeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-      <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/>
-    </svg>
-  )
-}
-
-function ThumbUpIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/>
-    </svg>
-  )
-}
-
-function ThumbDownIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/>
-    </svg>
-  )
-}
-
-function CommentIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-    </svg>
-  )
-}
-
-function ShareIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="18" cy="5" r="3"/>
-      <circle cx="6" cy="12" r="3"/>
-      <circle cx="18" cy="19" r="3"/>
-      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-    </svg>
   )
 }

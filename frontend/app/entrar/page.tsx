@@ -106,7 +106,7 @@ export default function LoginPage() {
           <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border border-[oklch(0.9_0.01_264)] p-8 md:p-10">
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[oklch(0.55_0.22_240)]/20">
+              <div className="w-16 h-16 bg-linear-to-br from-[oklch(0.55_0.22_240)] to-[oklch(0.65_0.18_200)] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[oklch(0.55_0.22_240)]/20">
                 <svg
                   className="w-8 h-8 text-white"
                   fill="none"
