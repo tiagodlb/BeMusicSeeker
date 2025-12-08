@@ -11,19 +11,25 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
+      - name: Install backend dependencies
+        run: cd backend && bun install
        
-      - name: Run Oxlint
-        run: bunx oxlint --type-aware --deny-warnings
+      - name: Run Oxlint on backend
+        run: cd backend && bunx oxlint --type-aware --deny-warnings
+
+      - name: Install frontend dependencies
+        run: cd frontend && bun install
+
+      - name: Run Oxlint on frontend
+        run: cd frontend && bunx oxlint --type-aware --deny-warnings
 
       - name: Linter check passed
         if: success()
-        run: echo "Oxlint check was successful."
+        run: echo "Oxlint check was successful for both backend and frontend."
