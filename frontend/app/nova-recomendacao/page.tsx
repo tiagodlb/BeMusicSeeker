@@ -17,7 +17,6 @@ import {
   Bell,
   Settings,
   Music,
-  X,
   AlertCircle,
   CheckCircle,
   Upload,

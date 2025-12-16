@@ -1,6 +1,6 @@
 'use client'
 
-import { SetStateAction, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { 
   Home, 
@@ -8,13 +8,9 @@ import {
   BarChart3, 
   Compass, 
   Heart, 
-  Users, 
   Plus, 
-  ChevronDown,
   Menu,
-  Search,
   Bell,
-  Settings,
   LayoutList,
   LayoutGrid,
   Music,
@@ -30,7 +26,6 @@ import {
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
