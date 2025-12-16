@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
+import { createRecommendation } from '@/lib/api/recommendations'
 
 const navItems = [
   { href: '/dashboard', label: 'Início', icon: Home },
@@ -345,25 +346,25 @@ export default function NovaRecomendacaoPage() {
     setIsLoading(true)
 
     try {
-      // TODO: Implementar chamada à API
-      // const formData = new FormData()
-      // formData.append('title', musicTitle)
-      // formData.append('artist', artist)
-      // formData.append('genre', genre)
-      // formData.append('description', description)
-      // formData.append('tags', JSON.stringify(selectedTags))
-      // if (mediaFile) formData.append('media', mediaFile)
-      // if (mediaUrl) formData.append('mediaUrl', mediaUrl)
+      await createRecommendation({
+        title: musicTitle,
+        artist,
+        genre,
+        description,
+        tags: selectedTags,
+        mediaUrl: mediaUrl || undefined,
+      })
 
-      // const response = await fetch('/api/recommendations', {
-      //   method: 'POST',
-      //   body: formData,
-      // })
-
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      router.push('/dashboard')
+      // Sucesso - redirecionar para dashboard
+      router.push('/dashboard?success=true')
     } catch (error) {
       console.error('Erro ao criar recomendação:', error)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Erro ao criar recomendação. Tente novamente.'
+      // Mostrar erro ao usuário (você pode usar um toast aqui)
+      alert(errorMessage)
       setIsLoading(false)
     }
   }
