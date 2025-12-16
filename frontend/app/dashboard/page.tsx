@@ -398,6 +398,10 @@ function RecommendationCard({
           <div className="flex-1" />
 
           <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Heart className="w-4 h-4" />
+          </Button>
+
+          <Button variant="ghost" size="icon" className="h-8 w-8">
             <Share2 className="w-4 h-4" />
           </Button>
         </div>
@@ -516,40 +520,6 @@ export default function DashboardPage() {
                   <SelectItem value="week">Última Semana</SelectItem>
                   <SelectItem value="month">Último Mês</SelectItem>
                   <SelectItem value="all">Todos os Tempos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase">Gênero</span>
-              <Select defaultValue="all">
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="rock">Rock</SelectItem>
-                  <SelectItem value="pop">Pop</SelectItem>
-                  <SelectItem value="hip-hop">Hip-Hop</SelectItem>
-                  <SelectItem value="electronic">Eletrônica</SelectItem>
-                  <SelectItem value="jazz">Jazz</SelectItem>
-                  <SelectItem value="mpb">MPB</SelectItem>
-                  <SelectItem value="indie">Indie</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase">Ordenar</span>
-              <Select defaultValue="votes">
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="votes">Mais Votados</SelectItem>
-                  <SelectItem value="recent">Mais Recentes</SelectItem>
-                  <SelectItem value="trending">Trending</SelectItem>
-                  <SelectItem value="following">Meus Seguidos</SelectItem>
                 </SelectContent>
               </Select>
             </div>
