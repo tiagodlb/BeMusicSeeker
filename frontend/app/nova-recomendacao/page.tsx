@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -18,6 +18,9 @@ import {
   Settings,
   Music,
   X,
+  AlertCircle,
+  CheckCircle,
+  Upload,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -165,6 +168,23 @@ function SidebarContent() {
   )
 }
 
+function Check(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
 export default function NovaRecomendacaoPage() {
   const router = useRouter()
   const [musicTitle, setMusicTitle] = useState('')
@@ -172,7 +192,24 @@ export default function NovaRecomendacaoPage() {
   const [genre, setGenre] = useState('')
   const [description, setDescription] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaUrl, setMediaUrl] = useState('')
+  const [mediaType, setMediaType] = useState<'upload' | 'url'>('url')
+  const [mediaPreview, setMediaPreview] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+
+  const isFormValid = useMemo(() => {
+    return (
+      musicTitle.trim() !== '' &&
+      artist.trim() !== '' &&
+      genre !== '' &&
+      description.trim() !== '' &&
+      selectedTags.length > 0 &&
+      (mediaFile !== null || mediaUrl.trim() !== '')
+    )
+  }, [musicTitle, artist, genre, description, selectedTags, mediaFile, mediaUrl])
 
   const handleAddTag = (tag: string) => {
     if (!selectedTags.includes(tag)) {
@@ -184,11 +221,88 @@ export default function NovaRecomendacaoPage() {
     setSelectedTags(selectedTags.filter((t) => t !== tag))
   }
 
+  const handleFieldBlur = (field: string) => {
+    setTouched({ ...touched, [field]: true })
+    validateField(field)
+  }
+
+  const validateField = (field: string) => {
+    const newErrors = { ...errors }
+
+    if (field === 'title' && !musicTitle.trim()) {
+      newErrors.title = 'Título é obrigatório'
+    } else if (field === 'title') {
+      delete newErrors.title
+    }
+
+    if (field === 'artist' && !artist.trim()) {
+      newErrors.artist = 'Artista é obrigatório'
+    } else if (field === 'artist') {
+      delete newErrors.artist
+    }
+
+    if (field === 'genre' && !genre) {
+      newErrors.genre = 'Gênero é obrigatório'
+    } else if (field === 'genre') {
+      delete newErrors.genre
+    }
+
+    if (field === 'description' && !description.trim()) {
+      newErrors.description = 'Descrição é obrigatória'
+    } else if (field === 'description' && description.length > 500) {
+      newErrors.description = 'Máximo 500 caracteres'
+    } else if (field === 'description') {
+      delete newErrors.description
+    }
+
+    if (field === 'tags' && selectedTags.length === 0) {
+      newErrors.tags = 'Selecione pelo menos uma tag'
+    } else if (field === 'tags') {
+      delete newErrors.tags
+    }
+
+    if (field === 'media' && !mediaFile && !mediaUrl.trim()) {
+      newErrors.media = 'Adicione um link ou upload de mídia'
+    } else if (field === 'media') {
+      delete newErrors.media
+    }
+
+    setErrors(newErrors)
+  }
+
+  const handleMediaFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setMediaFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setMediaPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+      validateField('media')
+    }
+  }
+
+  const handleMediaUrlChange = (url: string) => {
+    setMediaUrl(url)
+    setMediaPreview(url)
+    if (url.trim()) {
+      delete errors.media
+      setErrors({ ...errors })
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!musicTitle.trim() || !artist.trim() || !description.trim() || !genre) {
-      alert('Por favor, preencha todos os campos obrigatórios')
+    validateField('title')
+    validateField('artist')
+    validateField('genre')
+    validateField('description')
+    validateField('tags')
+    validateField('media')
+
+    if (!isFormValid) {
       return
     }
 
@@ -196,26 +310,24 @@ export default function NovaRecomendacaoPage() {
 
     try {
       // TODO: Implementar chamada à API
+      // const formData = new FormData()
+      // formData.append('title', musicTitle)
+      // formData.append('artist', artist)
+      // formData.append('genre', genre)
+      // formData.append('description', description)
+      // formData.append('tags', JSON.stringify(selectedTags))
+      // if (mediaFile) formData.append('media', mediaFile)
+      // if (mediaUrl) formData.append('mediaUrl', mediaUrl)
+
       // const response = await fetch('/api/recommendations', {
       //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     title: musicTitle,
-      //     artist,
-      //     genre,
-      //     description,
-      //     tags: selectedTags,
-      //   }),
+      //   body: formData,
       // })
 
-      // Simular delay da API
       await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Redirecionar para dashboard
       router.push('/dashboard')
     } catch (error) {
       console.error('Erro ao criar recomendação:', error)
-      alert('Erro ao criar recomendação. Tente novamente.')
       setIsLoading(false)
     }
   }
@@ -280,229 +392,421 @@ export default function NovaRecomendacaoPage() {
             </p>
           </section>
 
-          {/* Form Card */}
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <h2 className="text-xl font-semibold">Detalhes da Música</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Preencha as informações sobre a música que deseja recomendar
-              </p>
-            </CardHeader>
+          {/* Main Grid */}
+          <div className="grid lg:grid-cols-3 gap-6 max-w-6xl">
+            {/* Form Card */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <h2 className="text-xl font-semibold">Detalhes da Música</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Preencha as informações sobre a música que deseja recomendar
+                </p>
+              </CardHeader>
 
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Title */}
-                <div>
-                  <label htmlFor="title" className="block text-sm font-medium mb-2">
-                    Título da Música *
-                  </label>
-                  <Input
-                    id="title"
-                    placeholder="Ex: Neon Dreams"
-                    value={musicTitle}
-                    onChange={(e) => setMusicTitle(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Artist */}
-                <div>
-                  <label htmlFor="artist" className="block text-sm font-medium mb-2">
-                    Artista *
-                  </label>
-                  <Input
-                    id="artist"
-                    placeholder="Ex: Midnight Runners"
-                    value={artist}
-                    onChange={(e) => setArtist(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Genre */}
-                <div>
-                  <label htmlFor="genre" className="block text-sm font-medium mb-2">
-                    Gênero *
-                  </label>
-                  <Select value={genre} onValueChange={setGenre}>
-                    <SelectTrigger id="genre">
-                      <SelectValue placeholder="Selecione um gênero" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {genres.map((g) => (
-                        <SelectItem key={g} value={g}>
-                          {g}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium mb-2">
-                    Descrição / Por que recomenda? *
-                  </label>
-                  <textarea
-                    id="description"
-                    placeholder="Compartilhe o que torna essa música especial para você..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={5}
-                    className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Máximo 500 caracteres
-                  </p>
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="block text-sm font-medium mb-3">
-                    Tags (Selecione pelo menos uma)
-                  </label>
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        'para-estudar',
-                        'festa',
-                        'relaxante',
-                        'energético',
-                        'melancólico',
-                        'indie',
-                        'clássico',
-                        'descoberta',
-                      ].map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant={
-                            selectedTags.includes(tag) ? 'default' : 'outline'
-                          }
-                          className="cursor-pointer"
-                          onClick={() => {
-                            if (selectedTags.includes(tag)) {
-                              handleRemoveTag(tag)
-                            } else {
-                              handleAddTag(tag)
-                            }
-                          }}
-                        >
-                          {selectedTags.includes(tag) && (
-                            <Check className="w-3 h-3 mr-1" />
-                          )}
-                          #{tag}
-                        </Badge>
-                      ))}
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* Title */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="title" className="block text-sm font-medium">
+                        Título da Música *
+                      </label>
+                      {touched.title && !errors.title && musicTitle.trim() && (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      )}
                     </div>
-                    {selectedTags.length > 0 && (
-                      <div className="pt-3 border-t">
-                        <p className="text-xs text-muted-foreground mb-2">
-                          Tags selecionadas:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedTags.map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="flex items-center gap-1"
-                            >
-                              #{tag}
-                              <X
-                                className="w-3 h-3 cursor-pointer hover:opacity-70"
-                                onClick={() => handleRemoveTag(tag)}
-                              />
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
+                    <Input
+                      id="title"
+                      placeholder="Ex: Neon Dreams"
+                      value={musicTitle}
+                      onChange={(e) => setMusicTitle(e.target.value)}
+                      onBlur={() => handleFieldBlur('title')}
+                      className={
+                        touched.title && errors.title
+                          ? 'border-red-500 focus:ring-red-500'
+                          : ''
+                      }
+                    />
+                    {touched.title && errors.title && (
+                      <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.title}
+                      </p>
                     )}
                   </div>
-                </div>
 
-                {/* Buttons */}
-                <div className="flex gap-3 pt-6 border-t">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.back()}
-                    disabled={isLoading}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    {isLoading ? (
-                      <>
-                        <span className="animate-spin mr-2">⏳</span>
-                        Publicando...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Publicar Recomendação
-                      </>
+                  {/* Artist */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="artist" className="block text-sm font-medium">
+                        Artista *
+                      </label>
+                      {touched.artist && !errors.artist && artist.trim() && (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      )}
+                    </div>
+                    <Input
+                      id="artist"
+                      placeholder="Ex: Midnight Runners"
+                      value={artist}
+                      onChange={(e) => setArtist(e.target.value)}
+                      onBlur={() => handleFieldBlur('artist')}
+                      className={
+                        touched.artist && errors.artist
+                          ? 'border-red-500 focus:ring-red-500'
+                          : ''
+                      }
+                    />
+                    {touched.artist && errors.artist && (
+                      <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.artist}
+                      </p>
                     )}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+                  </div>
 
-          {/* Info Section */}
-          <section className="mt-8 grid md:grid-cols-3 gap-4">
-            <Card className="bg-primary/5">
-              <CardContent className="pt-6">
-                <h3 className="font-semibold mb-2">💡 Dica</h3>
-                <p className="text-sm text-muted-foreground">
-                  Quanto mais detalhada sua descrição, mais pessoas se interessarão
-                  por sua recomendação.
-                </p>
+                  {/* Genre */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="genre" className="block text-sm font-medium">
+                        Gênero *
+                      </label>
+                      {touched.genre && !errors.genre && genre && (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      )}
+                    </div>
+                    <Select
+                      value={genre}
+                      onValueChange={(value) => {
+                        setGenre(value)
+                        setTouched({ ...touched, genre: true })
+                      }}
+                    >
+                      <SelectTrigger
+                        id="genre"
+                        className={
+                          touched.genre && errors.genre
+                            ? 'border-red-500 focus:ring-red-500'
+                            : ''
+                        }
+                      >
+                        <SelectValue placeholder="Selecione um gênero" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {genres.map((g) => (
+                          <SelectItem key={g} value={g}>
+                            {g}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {touched.genre && errors.genre && (
+                      <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.genre}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Media Section */}
+                  <div className="border-t pt-5">
+                    <label className="block text-sm font-medium mb-3">
+                      Mídia / Link da Música *
+                    </label>
+
+                    {/* Media Type Tabs */}
+                    <div className="flex gap-2 mb-4">
+                      <Button
+                        type="button"
+                        variant={mediaType === 'url' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMediaType('url')}
+                      >
+                        Link
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={mediaType === 'upload' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMediaType('upload')}
+                      >
+                        Upload
+                      </Button>
+                    </div>
+
+                    {/* URL Input */}
+                    {mediaType === 'url' && (
+                      <div>
+                        <Input
+                          placeholder="Ex: https://open.spotify.com/track/... ou https://youtube.com/watch?v=..."
+                          value={mediaUrl}
+                          onChange={(e) => handleMediaUrlChange(e.target.value)}
+                          onBlur={() => handleFieldBlur('media')}
+                          className={
+                            touched.media && errors.media
+                              ? 'border-red-500 focus:ring-red-500'
+                              : ''
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Suportados: Spotify, YouTube, SoundCloud, Apple Music
+                        </p>
+                      </div>
+                    )}
+
+                    {/* File Upload */}
+                    {mediaType === 'upload' && (
+                      <div>
+                        <label
+                          htmlFor="media-file"
+                          className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent transition-colors"
+                        >
+                          <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                          <span className="text-sm font-medium">
+                            {mediaFile ? mediaFile.name : 'Clique ou arraste o arquivo'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            MP3, WAV, FLAC (máx 50MB)
+                          </span>
+                        </label>
+                        <input
+                          id="media-file"
+                          type="file"
+                          accept=".mp3,.wav,.flac"
+                          onChange={handleMediaFileChange}
+                          className="hidden"
+                        />
+                      </div>
+                    )}
+
+                    {touched.media && errors.media && (
+                      <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.media}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="description" className="block text-sm font-medium">
+                        Descrição / Por que recomenda? *
+                      </label>
+                      <span
+                        className={`text-xs ${
+                          description.length > 450
+                            ? 'text-orange-500'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        {description.length}/500
+                      </span>
+                    </div>
+                    <textarea
+                      id="description"
+                      placeholder="Compartilhe o que torna essa música especial para você. Seja criativo e detalhado!"
+                      value={description}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 500) {
+                          setDescription(e.target.value)
+                        }
+                      }}
+                      onBlur={() => handleFieldBlur('description')}
+                      rows={6}
+                      className={`w-full px-3 py-2 border rounded-md text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        touched.description && errors.description
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-input'
+                      }`}
+                    />
+                    {touched.description && errors.description && (
+                      <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium">
+                        Tags (Selecione pelo menos uma) *
+                      </label>
+                      {selectedTags.length > 0 && (
+                        <span className="text-xs text-green-500 font-medium">
+                          {selectedTags.length} selecionada{selectedTags.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          'para-estudar',
+                          'festa',
+                          'relaxante',
+                          'energético',
+                          'melancólico',
+                          'indie',
+                          'clássico',
+                          'descoberta',
+                        ].map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant={
+                              selectedTags.includes(tag) ? 'default' : 'outline'
+                            }
+                            className="cursor-pointer transition-all hover:scale-105"
+                            onClick={() => {
+                              if (selectedTags.includes(tag)) {
+                                handleRemoveTag(tag)
+                              } else {
+                                handleAddTag(tag)
+                              }
+                              setTouched({ ...touched, tags: true })
+                            }}
+                          >
+                            {selectedTags.includes(tag) && (
+                              <Check className="w-3 h-3 mr-1" />
+                            )}
+                            #{tag}
+                          </Badge>
+                        ))}
+                      </div>
+                      {touched.tags && errors.tags && (
+                        <p className="text-sm text-red-500 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          {errors.tags}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.back()}
+                      disabled={isLoading}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isLoading || !isFormValid}
+                      className="flex-1"
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Publicando...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Publicar Recomendação
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
 
-            <Card className="bg-primary/5">
-              <CardContent className="pt-6">
-                <h3 className="font-semibold mb-2">🏷️ Tags</h3>
-                <p className="text-sm text-muted-foreground">
-                  Use tags para categorizar sua música e facilitar descobertas de
-                  outros usuários.
-                </p>
-              </CardContent>
-            </Card>
+            {/* Preview & Tips Sidebar */}
+            <div className="space-y-4">
+              {/* Preview */}
+              {musicTitle || artist ? (
+                <Card>
+                  <CardHeader>
+                    <h3 className="text-sm font-semibold">Preview</h3>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center overflow-hidden">
+                        {mediaPreview ? (
+                          mediaType === 'upload' ? (
+                            <Music className="w-12 h-12 text-muted-foreground" />
+                          ) : (
+                            <iframe
+                              width="100%"
+                              height="100%"
+                              src={mediaUrl}
+                              frameBorder="0"
+                              allowFullScreen
+                              className="rounded"
+                            />
+                          )
+                        ) : (
+                          <Music className="w-12 h-12 text-muted-foreground" />
+                        )}
+                      </div>
+                      {musicTitle && (
+                        <div>
+                          <p className="text-sm font-semibold line-clamp-2">
+                            {musicTitle}
+                          </p>
+                        </div>
+                      )}
+                      {artist && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {artist}
+                        </p>
+                      )}
+                      {description && (
+                        <p className="text-xs text-muted-foreground line-clamp-3">
+                          {description}
+                        </p>
+                      )}
+                      {selectedTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-2">
+                          {selectedTags.slice(0, 3).map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              #{tag}
+                            </Badge>
+                          ))}
+                          {selectedTags.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{selectedTags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
 
-            <Card className="bg-primary/5">
-              <CardContent className="pt-6">
-                <h3 className="font-semibold mb-2">⭐ Qualidade</h3>
-                <p className="text-sm text-muted-foreground">
-                  Recomendações de qualidade recebem mais votações e visibilidade.
-                </p>
-              </CardContent>
-            </Card>
-          </section>
+              {/* Tips */}
+              <Card className="bg-primary/5">
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold text-sm mb-3">💡 Dicas</h3>
+                  <ul className="space-y-2 text-xs text-muted-foreground">
+                    <li className="flex gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span>Descreva emoções e sensações que a música despertou</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span>Mencione quando/onde você ouve essa música</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span>Tags ajudam outros a encontrarem sua recomendação</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span>Recomendações detalhadas recebem mais votações</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </main>
       </div>
     </div>
-  )
-}
-
-// Icon component for check
-function Check(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
   )
 }
