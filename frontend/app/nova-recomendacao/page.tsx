@@ -715,7 +715,6 @@ export default function NovaRecomendacaoPage() {
                           'romantic',
                           'drama',
                           'underground',
-                          'underground',
                           'hit',
                           'ost',
                         ].map((tag) => (
