@@ -285,11 +285,47 @@ export default function NovaRecomendacaoPage() {
 
   const handleMediaUrlChange = (url: string) => {
     setMediaUrl(url)
-    setMediaPreview(url)
     if (url.trim()) {
+      setMediaPreview(getEmbedUrl(url))
       delete errors.media
       setErrors({ ...errors })
     }
+  }
+
+  const getEmbedUrl = (url: string): string => {
+    // YouTube
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      const videoId = extractYoutubeId(url)
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`
+      }
+    }
+    // Spotify
+    if (url.includes('spotify.com')) {
+      const trackId = url.split('/track/')[1]?.split('?')[0]
+      if (trackId) {
+        return `https://open.spotify.com/embed/track/${trackId}`
+      }
+    }
+    // SoundCloud (sem embed público fácil, retorna URL original)
+    if (url.includes('soundcloud.com')) {
+      return url
+    }
+    return url
+  }
+
+  const extractYoutubeId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+      /youtube\.com\/embed\/([^&\n?#]+)/,
+    ]
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match && match[1]) {
+        return match[1]
+      }
+    }
+    return null
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -551,6 +587,11 @@ export default function NovaRecomendacaoPage() {
                         <p className="text-xs text-muted-foreground mt-2">
                           Suportados: Spotify, YouTube, SoundCloud, Apple Music
                         </p>
+                        {mediaUrl && (
+                          <p className="text-xs text-green-600 mt-1">
+                            ✓ URL válida para preview
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -726,18 +767,25 @@ export default function NovaRecomendacaoPage() {
                   <CardContent>
                     <div className="space-y-3">
                       <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center overflow-hidden">
-                        {mediaPreview ? (
-                          mediaType === 'upload' ? (
-                            <Music className="w-12 h-12 text-muted-foreground" />
-                          ) : (
+                        {mediaPreview && mediaType === 'url' ? (
+                          mediaPreview.includes('embed') ? (
                             <iframe
                               width="100%"
                               height="100%"
-                              src={mediaUrl}
+                              src={mediaPreview}
                               frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                               allowFullScreen
                               className="rounded"
+                              title="Média preview"
                             />
+                          ) : (
+                            <div className="text-center p-4">
+                              <Music className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                              <p className="text-xs text-muted-foreground">
+                                Preview disponível
+                              </p>
+                            </div>
                           )
                         ) : (
                           <Music className="w-12 h-12 text-muted-foreground" />
