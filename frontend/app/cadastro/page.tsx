@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { auth } from "@/lib/api";
 
 type UserType = "artista" | "curador" | "explorador" | "";
 
@@ -13,6 +14,7 @@ interface FormErrors {
   confirmPassword?: string;
   userType?: string;
   terms?: string;
+  api?: string;
 }
 
 const userTypes = [
@@ -112,8 +114,7 @@ export default function CadastroPage() {
     } else if (password.length < 8) {
       newErrors.password = "Senha deve ter pelo menos 8 caracteres";
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      newErrors.password =
-        "Senha deve conter maiuscula, minuscula e numero";
+      newErrors.password = "Senha deve conter maiuscula, minuscula e numero";
     }
 
     if (!confirmPassword) {
@@ -158,12 +159,29 @@ export default function CadastroPage() {
     if (!validateStep2()) return;
 
     setIsLoading(true);
+    setErrors({});
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const { data, error } = await auth.signUp({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password,
+    });
 
-    // Redirect to dashboard or onboarding
-    router.push("/dashboard");
+    setIsLoading(false);
+
+    if (error) {
+      // handle specific errors
+      if (error.status === 409 || error.message.toLowerCase().includes("email")) {
+        setStep(1);
+        setErrors({ email: "Este email ja esta em uso" });
+      } else {
+        setErrors({ api: error.message });
+      }
+      return;
+    }
+
+    // success - redirect to login or dashboard
+    router.push("/entrar?registered=true");
   };
 
   const getPasswordStrength = () => {
@@ -174,13 +192,17 @@ export default function CadastroPage() {
     if (/[a-z]/.test(password)) strength++;
     if (/[A-Z]/.test(password)) strength++;
     if (/\d/.test(password)) strength++;
-    if (/[^a-zA-Z\d]/.test(password)) strength++;
+    if (/[^a-zA-Z0-9]/.test(password)) strength++;
 
-    if (strength <= 2) return { strength, label: "Fraca", color: "bg-red-400" };
-    if (strength <= 3)
-      return { strength, label: "Media", color: "bg-yellow-400" };
-    if (strength <= 4) return { strength, label: "Forte", color: "bg-green-400" };
-    return { strength, label: "Muito Forte", color: "bg-emerald-500" };
+    const levels = [
+      { label: "Muito fraca", color: "bg-red-500" },
+      { label: "Fraca", color: "bg-orange-500" },
+      { label: "Razoavel", color: "bg-yellow-500" },
+      { label: "Boa", color: "bg-lime-500" },
+      { label: "Forte", color: "bg-green-500" },
+    ];
+
+    return { strength, ...levels[Math.min(strength, 4)] };
   };
 
   const passwordStrength = getPasswordStrength();
@@ -188,7 +210,7 @@ export default function CadastroPage() {
   return (
     <div className="min-h-screen bg-[oklch(0.99_0.002_264)] font-['Nohemi',sans-serif] flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[oklch(0.9_0.01_264)]">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-[oklch(0.9_0.01_264)]">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
             href="/"
@@ -206,35 +228,26 @@ export default function CadastroPage() {
               Home
             </Link>
             <Link
-              href="/#sobre"
-              className="font-medium text-[oklch(0.15_0.01_264)] hover:text-[oklch(0.55_0.22_240)] transition-colors"
-            >
-              Sobre
-            </Link>
-            <Link
               href="/#como-funciona"
               className="font-medium text-[oklch(0.15_0.01_264)] hover:text-[oklch(0.55_0.22_240)] transition-colors"
             >
               Como Funciona
             </Link>
-          </nav>
-
-          <div className="hidden md:block">
             <Link
               href="/entrar"
-              className="px-5 py-2.5 border-2 border-[oklch(0.55_0.22_240)] text-[oklch(0.55_0.22_240)] rounded-lg font-semibold hover:bg-[oklch(0.55_0.22_240)] hover:text-white transition-all"
+              className="font-semibold text-[oklch(0.55_0.22_240)] hover:opacity-80 transition-opacity"
             >
               Entrar
             </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-lg">
-          {/* Progress Indicator */}
-          <div className="flex items-center justify-center gap-3 mb-8">
+      <main className="flex-1 flex items-center justify-center px-4 py-24 md:py-32">
+        <div className="w-full max-w-md">
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center gap-4 mb-8">
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
                 step >= 1
@@ -264,6 +277,13 @@ export default function CadastroPage() {
 
           {/* Form Card */}
           <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border border-[oklch(0.9_0.01_264)] p-8 md:p-10">
+            {/* API Error */}
+            {errors.api && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                {errors.api}
+              </div>
+            )}
+
             {/* Step 1: Account Info */}
             {step === 1 && (
               <>
@@ -458,11 +478,11 @@ export default function CadastroPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-[oklch(0.5_0.02_264)] hover:text-[oklch(0.55_0.22_240)] transition-colors"
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
                       >
                         {showPassword ? (
                           <svg
-                            className="w-5 h-5"
+                            className="w-5 h-5 text-[oklch(0.5_0.02_264)]"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -476,7 +496,7 @@ export default function CadastroPage() {
                           </svg>
                         ) : (
                           <svg
-                            className="w-5 h-5"
+                            className="w-5 h-5 text-[oklch(0.5_0.02_264)]"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -497,40 +517,10 @@ export default function CadastroPage() {
                         )}
                       </button>
                     </div>
-
-                    {/* Password Strength Indicator */}
-                    {password && (
-                      <div className="mt-3">
-                        <div className="flex gap-1 mb-1">
-                          {[1, 2, 3, 4, 5].map((level) => (
-                            <div
-                              key={level}
-                              className={`h-1.5 flex-1 rounded-full transition-all ${
-                                level <= passwordStrength.strength
-                                  ? passwordStrength.color
-                                  : "bg-[oklch(0.9_0.01_264)]"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <p
-                          className={`text-xs font-medium ${
-                            passwordStrength.strength <= 2
-                              ? "text-red-500"
-                              : passwordStrength.strength <= 3
-                              ? "text-yellow-600"
-                              : "text-green-600"
-                          }`}
-                        >
-                          Forca: {passwordStrength.label}
-                        </p>
-                      </div>
-                    )}
-
                     {errors.password && (
                       <p className="mt-2 text-sm text-red-500 flex items-center gap-1.5">
                         <svg
-                          className="w-4 h-4 shrink-0"
+                          className="w-4 h-4"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -542,6 +532,26 @@ export default function CadastroPage() {
                         </svg>
                         {errors.password}
                       </p>
+                    )}
+                    {/* Password Strength */}
+                    {password && (
+                      <div className="mt-3">
+                        <div className="flex gap-1 mb-1">
+                          {[1, 2, 3, 4, 5].map((level) => (
+                            <div
+                              key={level}
+                              className={`h-1 flex-1 rounded-full transition-all ${
+                                level <= passwordStrength.strength
+                                  ? passwordStrength.color
+                                  : "bg-[oklch(0.9_0.01_264)]"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-xs text-[oklch(0.5_0.02_264)]">
+                          Forca: {passwordStrength.label}
+                        </p>
+                      </div>
                     )}
                   </div>
 
@@ -578,13 +588,11 @@ export default function CadastroPage() {
                           if (errors.confirmPassword)
                             setErrors({ ...errors, confirmPassword: undefined });
                         }}
-                        placeholder="Digite a senha novamente"
+                        placeholder="Repita sua senha"
                         autoComplete="new-password"
                         className={`w-full pl-12 pr-12 py-3.5 bg-[oklch(0.98_0.002_264)] border rounded-xl font-medium text-[oklch(0.15_0.01_264)] placeholder:text-[oklch(0.6_0.02_264)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.55_0.22_240)]/20 focus:border-[oklch(0.55_0.22_240)] transition-all ${
                           errors.confirmPassword
                             ? "border-red-400 bg-red-50/50"
-                            : confirmPassword && password === confirmPassword
-                            ? "border-green-400 bg-green-50/50"
                             : "border-[oklch(0.9_0.01_264)]"
                         }`}
                       />
@@ -593,11 +601,11 @@ export default function CadastroPage() {
                         onClick={() =>
                           setShowConfirmPassword(!showConfirmPassword)
                         }
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-[oklch(0.5_0.02_264)] hover:text-[oklch(0.55_0.22_240)] transition-colors"
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
                       >
                         {showConfirmPassword ? (
                           <svg
-                            className="w-5 h-5"
+                            className="w-5 h-5 text-[oklch(0.5_0.02_264)]"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -611,7 +619,7 @@ export default function CadastroPage() {
                           </svg>
                         ) : (
                           <svg
-                            className="w-5 h-5"
+                            className="w-5 h-5 text-[oklch(0.5_0.02_264)]"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -727,41 +735,18 @@ export default function CadastroPage() {
                           className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                             userType === type.id
                               ? "bg-[oklch(0.55_0.22_240)] text-white"
-                              : "bg-[oklch(0.96_0.01_264)] text-[oklch(0.5_0.02_264)]"
+                              : "bg-[oklch(0.95_0.01_264)] text-[oklch(0.5_0.02_264)]"
                           }`}
                         >
                           {type.icon}
                         </div>
-                        <div className="flex-1">
-                          <div className="font-bold text-[oklch(0.15_0.01_264)]">
+                        <div>
+                          <h3 className="font-bold text-[oklch(0.15_0.01_264)]">
                             {type.title}
-                          </div>
-                          <div className="text-sm text-[oklch(0.5_0.02_264)]">
+                          </h3>
+                          <p className="text-sm text-[oklch(0.5_0.02_264)]">
                             {type.description}
-                          </div>
-                        </div>
-                        <div
-                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                            userType === type.id
-                              ? "border-[oklch(0.55_0.22_240)] bg-[oklch(0.55_0.22_240)]"
-                              : "border-[oklch(0.8_0.01_264)]"
-                          }`}
-                        >
-                          {userType === type.id && (
-                            <svg
-                              className="w-4 h-4 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={3}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          )}
+                          </p>
                         </div>
                       </button>
                     ))}
@@ -785,48 +770,26 @@ export default function CadastroPage() {
 
                   {/* Terms Checkbox */}
                   <div className="pt-4">
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={acceptTerms}
-                          onChange={(e) => {
-                            setAcceptTerms(e.target.checked);
-                            if (errors.terms)
-                              setErrors({ ...errors, terms: undefined });
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div
-                          className={`w-5 h-5 border-2 rounded-md peer-checked:bg-[oklch(0.55_0.22_240)] peer-checked:border-[oklch(0.55_0.22_240)] transition-all group-hover:border-[oklch(0.55_0.22_240)] ${
-                            errors.terms
-                              ? "border-red-400"
-                              : "border-[oklch(0.8_0.01_264)]"
-                          }`}
-                        />
-                        <svg
-                          className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </div>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={acceptTerms}
+                        onChange={(e) => {
+                          setAcceptTerms(e.target.checked);
+                          if (errors.terms)
+                            setErrors({ ...errors, terms: undefined });
+                        }}
+                        className="mt-1 w-5 h-5 rounded border-[oklch(0.9_0.01_264)] text-[oklch(0.55_0.22_240)] focus:ring-[oklch(0.55_0.22_240)]/20"
+                      />
                       <span className="text-sm text-[oklch(0.4_0.02_264)]">
-                        Li e aceito os{" "}
+                        Li e concordo com os{" "}
                         <Link
                           href="/termos"
                           className="text-[oklch(0.55_0.22_240)] hover:underline"
                         >
                           Termos de Uso
                         </Link>{" "}
-                        e a{" "}
+                        e{" "}
                         <Link
                           href="/privacidade"
                           className="text-[oklch(0.55_0.22_240)] hover:underline"
@@ -858,7 +821,7 @@ export default function CadastroPage() {
                     <button
                       type="button"
                       onClick={handlePrevStep}
-                      className="flex-1 py-4 border-2 border-[oklch(0.9_0.01_264)] text-[oklch(0.15_0.01_264)] rounded-xl font-bold text-lg hover:border-[oklch(0.55_0.22_240)] hover:text-[oklch(0.55_0.22_240)] transition-all flex items-center justify-center gap-2"
+                      className="flex-1 py-4 bg-[oklch(0.95_0.01_264)] text-[oklch(0.3_0.02_264)] rounded-xl font-bold text-lg hover:bg-[oklch(0.9_0.01_264)] transition-all flex items-center justify-center gap-2"
                     >
                       <svg
                         className="w-5 h-5"
@@ -870,7 +833,7 @@ export default function CadastroPage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                          d="M7 16l-4-4m0 0l4-4m-4 4h18"
                         />
                       </svg>
                       Voltar
@@ -878,12 +841,12 @@ export default function CadastroPage() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 py-4 bg-[oklch(0.55_0.22_240)] text-white rounded-xl font-bold text-lg hover:opacity-90 hover:-translate-y-0.5 transition-all shadow-lg shadow-[oklch(0.55_0.22_240)]/30 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                      className="flex-1 py-4 bg-[oklch(0.55_0.22_240)] text-white rounded-xl font-bold text-lg hover:opacity-90 hover:-translate-y-0.5 transition-all shadow-lg shadow-[oklch(0.55_0.22_240)]/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2"
                     >
                       {isLoading ? (
                         <>
                           <svg
-                            className="w-5 h-5 animate-spin"
+                            className="animate-spin w-5 h-5"
                             fill="none"
                             viewBox="0 0 24 24"
                           >
@@ -901,10 +864,25 @@ export default function CadastroPage() {
                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                             />
                           </svg>
-                          Criando...
+                          Criando conta...
                         </>
                       ) : (
-                        "Criar Conta"
+                        <>
+                          Criar Conta
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </>
                       )}
                     </button>
                   </div>
@@ -912,82 +890,19 @@ export default function CadastroPage() {
               </>
             )}
 
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[oklch(0.9_0.01_264)]" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-[oklch(0.5_0.02_264)]">
-                  Ja tem conta?
-                </span>
-              </div>
-            </div>
-
             {/* Login Link */}
-            <Link
-              href="/entrar"
-              className="block w-full py-3.5 border-2 border-[oklch(0.9_0.01_264)] text-[oklch(0.15_0.01_264)] rounded-xl font-semibold text-center hover:border-[oklch(0.55_0.22_240)] hover:text-[oklch(0.55_0.22_240)] transition-all"
-            >
-              Fazer Login
-            </Link>
-
-            {/* Continue as Guest */}
-            <div className="mt-6 text-center">
+            <p className="text-center text-[oklch(0.5_0.02_264)] mt-8">
+              Ja tem uma conta?{" "}
               <Link
-                href="/"
-                className="text-sm text-[oklch(0.55_0.22_240)] hover:underline inline-flex items-center gap-1.5"
+                href="/entrar"
+                className="font-semibold text-[oklch(0.55_0.22_240)] hover:underline"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  />
-                </svg>
-                Continuar visitando
+                Faca login
               </Link>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-[oklch(0.98_0.002_264)] border-t border-[oklch(0.9_0.01_264)] py-8">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-6 text-sm text-[oklch(0.5_0.02_264)]">
-              <Link
-                href="/termos"
-                className="hover:text-[oklch(0.15_0.01_264)] transition-colors"
-              >
-                Termos de Uso
-              </Link>
-              <Link
-                href="/privacidade"
-                className="hover:text-[oklch(0.15_0.01_264)] transition-colors"
-              >
-                Privacidade
-              </Link>
-              <Link
-                href="/contato"
-                className="hover:text-[oklch(0.15_0.01_264)] transition-colors"
-              >
-                Contato
-              </Link>
-            </div>
-            <p className="text-sm text-[oklch(0.5_0.02_264)]">
-              2025 BeMusicShare
             </p>
           </div>
         </div>
-      </footer>
+      </main>
     </div>
   );
 }

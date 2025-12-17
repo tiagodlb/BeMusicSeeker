@@ -20,6 +20,9 @@ import {
   AlertCircle,
   CheckCircle,
   Upload,
+  X,
+  Check,
+  Loader2,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -44,7 +47,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
-import { createRecommendation } from '@/lib/api/recommendations'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const navItems = [
   { href: '/dashboard', label: 'Início', icon: Home },
@@ -71,6 +74,46 @@ const genres = [
   'Samba',
   'Forró',
   'Reggae',
+  'R&B',
+  'Metal',
+  'Funk',
+  'Country',
+  'Lo-Fi',
+  'Soul',
+]
+
+const availableTags = [
+  'para-estudar',
+  'festa',
+  'relaxante',
+  'energético',
+  'melancólico',
+  'indie',
+  'clássico',
+  'descoberta',
+  'viral',
+  'trending',
+  'feel-good',
+  'nostalgia',
+  'motivação',
+  'meditação',
+  'road-trip',
+  'dança',
+  'soul',
+  'alternative',
+  'electro',
+  'lo-fi',
+  'acoustic',
+  'uplifting',
+  'dark',
+  'experimental',
+  'chill',
+  'workout',
+  'party',
+  'romantic',
+  'underground',
+  'hit',
+  'ost',
 ]
 
 function SidebarContent() {
@@ -95,10 +138,7 @@ function SidebarContent() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    'text-muted-foreground hover:bg-accent hover:text-foreground'
-                  )}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                 >
                   <item.icon className="w-5 h-5" />
                   {item.label}
@@ -144,7 +184,6 @@ function SidebarContent() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-2">
               <Avatar className="w-9 h-9">
-                <AvatarImage src="" />
                 <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-sm">
                   TS
                 </AvatarFallback>
@@ -157,7 +196,9 @@ function SidebarContent() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/perfil/tiagosilva">Meu Perfil</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem>Configurações</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive">Sair</DropdownMenuItem>
@@ -168,51 +209,81 @@ function SidebarContent() {
   )
 }
 
-function Check(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  )
-}
-
 export default function NovaRecomendacaoPage() {
   const router = useRouter()
+
+  // Form state
   const [musicTitle, setMusicTitle] = useState('')
   const [artist, setArtist] = useState('')
   const [genre, setGenre] = useState('')
   const [description, setDescription] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaType, setMediaType] = useState<'url' | 'upload'>('url')
   const [mediaUrl, setMediaUrl] = useState('')
-  const [mediaType, setMediaType] = useState<'upload' | 'url'>('url')
-  const [mediaPreview, setMediaPreview] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
+  // Validation state
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Form validation
   const isFormValid = useMemo(() => {
     return (
-      musicTitle.trim() !== '' &&
-      artist.trim() !== '' &&
+      musicTitle.trim().length > 0 &&
+      artist.trim().length > 0 &&
       genre !== '' &&
-      description.trim() !== '' &&
+      description.trim().length >= 50 &&
       selectedTags.length > 0 &&
-      (mediaFile !== null || mediaUrl.trim() !== '')
+      (mediaUrl.trim() !== '' || mediaFile !== null) &&
+      acceptedTerms
     )
-  }, [musicTitle, artist, genre, description, selectedTags, mediaFile, mediaUrl])
+  }, [musicTitle, artist, genre, description, selectedTags, mediaUrl, mediaFile, acceptedTerms])
+
+  const validateField = (field: string) => {
+    const newErrors = { ...errors }
+
+    switch (field) {
+      case 'title':
+        if (!musicTitle.trim()) newErrors.title = 'Título é obrigatório'
+        else delete newErrors.title
+        break
+      case 'artist':
+        if (!artist.trim()) newErrors.artist = 'Artista é obrigatório'
+        else delete newErrors.artist
+        break
+      case 'genre':
+        if (!genre) newErrors.genre = 'Selecione um gênero'
+        else delete newErrors.genre
+        break
+      case 'description':
+        if (!description.trim()) newErrors.description = 'Descrição é obrigatória'
+        else if (description.length < 50) newErrors.description = 'Mínimo 50 caracteres'
+        else if (description.length > 500) newErrors.description = 'Máximo 500 caracteres'
+        else delete newErrors.description
+        break
+      case 'tags':
+        if (selectedTags.length === 0) newErrors.tags = 'Selecione pelo menos uma tag'
+        else delete newErrors.tags
+        break
+      case 'media':
+        if (!mediaUrl.trim() && !mediaFile) newErrors.media = 'Adicione um link ou arquivo de mídia'
+        else delete newErrors.media
+        break
+    }
+
+    setErrors(newErrors)
+  }
+
+  const handleFieldBlur = (field: string) => {
+    setTouched({ ...touched, [field]: true })
+    validateField(field)
+  }
 
   const handleAddTag = (tag: string) => {
-    if (!selectedTags.includes(tag)) {
+    if (!selectedTags.includes(tag) && selectedTags.length < 5) {
       setSelectedTags([...selectedTags, tag])
     }
   }
@@ -221,74 +292,33 @@ export default function NovaRecomendacaoPage() {
     setSelectedTags(selectedTags.filter((t) => t !== tag))
   }
 
-  const handleFieldBlur = (field: string) => {
-    setTouched({ ...touched, [field]: true })
-    validateField(field)
-  }
-
-  const validateField = (field: string) => {
-    const newErrors = { ...errors }
-
-    if (field === 'title' && !musicTitle.trim()) {
-      newErrors.title = 'Título é obrigatório'
-    } else if (field === 'title') {
-      delete newErrors.title
+  const handleMediaUrlChange = (url: string) => {
+    setMediaUrl(url)
+    if (url.trim()) {
+      setMediaPreview(getEmbedUrl(url))
+      setErrors((prev) => {
+        const { media, ...rest } = prev
+        return rest
+      })
+    } else {
+      setMediaPreview(null)
     }
-
-    if (field === 'artist' && !artist.trim()) {
-      newErrors.artist = 'Artista é obrigatório'
-    } else if (field === 'artist') {
-      delete newErrors.artist
-    }
-
-    if (field === 'genre' && !genre) {
-      newErrors.genre = 'Gênero é obrigatório'
-    } else if (field === 'genre') {
-      delete newErrors.genre
-    }
-
-    if (field === 'description' && !description.trim()) {
-      newErrors.description = 'Descrição é obrigatória'
-    } else if (field === 'description' && description.length > 500) {
-      newErrors.description = 'Máximo 500 caracteres'
-    } else if (field === 'description') {
-      delete newErrors.description
-    }
-
-    if (field === 'tags' && selectedTags.length === 0) {
-      newErrors.tags = 'Selecione pelo menos uma tag'
-    } else if (field === 'tags') {
-      delete newErrors.tags
-    }
-
-    if (field === 'media' && !mediaFile && !mediaUrl.trim()) {
-      newErrors.media = 'Adicione um link ou upload de mídia'
-    } else if (field === 'media') {
-      delete newErrors.media
-    }
-
-    setErrors(newErrors)
   }
 
   const handleMediaFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setMediaFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setMediaPreview(reader.result as string)
+      if (file.size > 50 * 1024 * 1024) {
+        setErrors({ ...errors, media: 'Arquivo muito grande (máx 50MB)' })
+        return
       }
-      reader.readAsDataURL(file)
-      validateField('media')
-    }
-  }
-
-  const handleMediaUrlChange = (url: string) => {
-    setMediaUrl(url)
-    if (url.trim()) {
-      setMediaPreview(getEmbedUrl(url))
-      delete errors.media
-      setErrors({ ...errors })
+      setMediaFile(file)
+      setMediaUrl('')
+      setMediaPreview(null)
+      setErrors((prev) => {
+        const { media, ...rest } = prev
+        return rest
+      })
     }
   }
 
@@ -296,20 +326,12 @@ export default function NovaRecomendacaoPage() {
     // YouTube
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       const videoId = extractYoutubeId(url)
-      if (videoId) {
-        return `https://www.youtube.com/embed/${videoId}`
-      }
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`
     }
     // Spotify
-    if (url.includes('spotify.com')) {
+    if (url.includes('spotify.com/track/')) {
       const trackId = url.split('/track/')[1]?.split('?')[0]
-      if (trackId) {
-        return `https://open.spotify.com/embed/track/${trackId}`
-      }
-    }
-    // SoundCloud (sem embed público fácil, retorna URL original)
-    if (url.includes('soundcloud.com')) {
-      return url
+      if (trackId) return `https://open.spotify.com/embed/track/${trackId}`
     }
     return url
   }
@@ -321,9 +343,7 @@ export default function NovaRecomendacaoPage() {
     ]
     for (const pattern of patterns) {
       const match = url.match(pattern)
-      if (match && match[1]) {
-        return match[1]
-      }
+      if (match?.[1]) return match[1]
     }
     return null
   }
@@ -331,39 +351,21 @@ export default function NovaRecomendacaoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    validateField('title')
-    validateField('artist')
-    validateField('genre')
-    validateField('description')
-    validateField('tags')
-    validateField('media')
+    // Validate all fields
+    ;['title', 'artist', 'genre', 'description', 'tags', 'media'].forEach(validateField)
+    setTouched({ title: true, artist: true, genre: true, description: true, tags: true, media: true })
 
-    if (!isFormValid) {
-      return
-    }
+    if (!isFormValid) return
 
     setIsLoading(true)
 
     try {
-      await createRecommendation({
-        title: musicTitle,
-        artist,
-        genre,
-        description,
-        tags: selectedTags,
-        mediaUrl: mediaUrl || undefined,
-      })
-
-      // Sucesso - redirecionar para dashboard
-      router.push('/dashboard?success=true')
+      // TODO: integrate with API
+      // await createRecommendation({ title: musicTitle, artist, genre, description, tags: selectedTags, mediaUrl })
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      router.push('/dashboard?success=recommendation')
     } catch (error) {
       console.error('Erro ao criar recomendação:', error)
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Erro ao criar recomendação. Tente novamente.'
-      // Mostrar erro ao usuário (você pode usar um toast aqui)
-      alert(errorMessage)
       setIsLoading(false)
     }
   }
@@ -379,8 +381,7 @@ export default function NovaRecomendacaoPage() {
       <div className="lg:pl-64">
         {/* Header */}
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-          <div className="flex h-16 items-center justify-around gap-6 px-4 sm:px-6 lg:px-8">
-            {/* Mobile Menu */}
+          <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden">
@@ -392,19 +393,14 @@ export default function NovaRecomendacaoPage() {
               </SheetContent>
             </Sheet>
 
-            {/* Search */}
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar músicas, artistas, pessoas..."
-                  className="pl-9 border-black/30"
-                />
+                <Input type="search" placeholder="Buscar músicas, artistas..." className="pl-9" />
               </div>
             </div>
 
-            <div className="flex items-center gap-3 ml-4">
+            <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
@@ -420,12 +416,8 @@ export default function NovaRecomendacaoPage() {
         <main className="p-4 sm:p-6 lg:p-8">
           {/* Page Title */}
           <section className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight mb-2">
-              Nova Recomendação
-            </h1>
-            <p className="text-muted-foreground">
-              Compartilhe sua descoberta musical com a comunidade
-            </p>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Nova Recomendação</h1>
+            <p className="text-muted-foreground">Compartilhe sua descoberta musical com a comunidade</p>
           </section>
 
           {/* Main Grid */}
@@ -434,9 +426,7 @@ export default function NovaRecomendacaoPage() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <h2 className="text-xl font-semibold">Detalhes da Música</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Preencha as informações sobre a música que deseja recomendar
-                </p>
+                <p className="text-sm text-muted-foreground">Preencha as informações sobre a música que deseja recomendar</p>
               </CardHeader>
 
               <CardContent>
@@ -444,7 +434,7 @@ export default function NovaRecomendacaoPage() {
                   {/* Title */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label htmlFor="title" className="block text-sm font-medium">
+                      <label htmlFor="title" className="text-sm font-medium">
                         Título da Música *
                       </label>
                       {touched.title && !errors.title && musicTitle.trim() && (
@@ -457,11 +447,7 @@ export default function NovaRecomendacaoPage() {
                       value={musicTitle}
                       onChange={(e) => setMusicTitle(e.target.value)}
                       onBlur={() => handleFieldBlur('title')}
-                      className={
-                        touched.title && errors.title
-                          ? 'border-red-500 focus:ring-red-500'
-                          : ''
-                      }
+                      className={cn(touched.title && errors.title && 'border-red-500 focus-visible:ring-red-500')}
                     />
                     {touched.title && errors.title && (
                       <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
@@ -474,7 +460,7 @@ export default function NovaRecomendacaoPage() {
                   {/* Artist */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label htmlFor="artist" className="block text-sm font-medium">
+                      <label htmlFor="artist" className="text-sm font-medium">
                         Artista *
                       </label>
                       {touched.artist && !errors.artist && artist.trim() && (
@@ -483,15 +469,11 @@ export default function NovaRecomendacaoPage() {
                     </div>
                     <Input
                       id="artist"
-                      placeholder="Ex: Midnight Runners"
+                      placeholder="Ex: Aurora Beats"
                       value={artist}
                       onChange={(e) => setArtist(e.target.value)}
                       onBlur={() => handleFieldBlur('artist')}
-                      className={
-                        touched.artist && errors.artist
-                          ? 'border-red-500 focus:ring-red-500'
-                          : ''
-                      }
+                      className={cn(touched.artist && errors.artist && 'border-red-500 focus-visible:ring-red-500')}
                     />
                     {touched.artist && errors.artist && (
                       <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
@@ -504,35 +486,18 @@ export default function NovaRecomendacaoPage() {
                   {/* Genre */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label htmlFor="genre" className="block text-sm font-medium">
-                        Gênero *
-                      </label>
+                      <label className="text-sm font-medium">Gênero *</label>
                       {touched.genre && !errors.genre && genre && (
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       )}
                     </div>
-                    <Select
-                      value={genre}
-                      onValueChange={(value) => {
-                        setGenre(value)
-                        setTouched({ ...touched, genre: true })
-                      }}
-                    >
-                      <SelectTrigger
-                        id="genre"
-                        className={
-                          touched.genre && errors.genre
-                            ? 'border-red-500 focus:ring-red-500'
-                            : ''
-                        }
-                      >
+                    <Select value={genre} onValueChange={(v) => { setGenre(v); setTouched({ ...touched, genre: true }) }}>
+                      <SelectTrigger className={cn(touched.genre && errors.genre && 'border-red-500')}>
                         <SelectValue placeholder="Selecione um gênero" />
                       </SelectTrigger>
                       <SelectContent>
                         {genres.map((g) => (
-                          <SelectItem key={g} value={g}>
-                            {g}
-                          </SelectItem>
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -546,31 +511,17 @@ export default function NovaRecomendacaoPage() {
 
                   {/* Media Section */}
                   <div className="border-t pt-5">
-                    <label className="block text-sm font-medium mb-3">
-                      Mídia / Link da Música *
-                    </label>
+                    <label className="text-sm font-medium mb-3 block">Mídia / Link da Música *</label>
 
-                    {/* Media Type Tabs */}
                     <div className="flex gap-2 mb-4">
-                      <Button
-                        type="button"
-                        variant={mediaType === 'url' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setMediaType('url')}
-                      >
+                      <Button type="button" variant={mediaType === 'url' ? 'default' : 'outline'} size="sm" onClick={() => setMediaType('url')}>
                         Link
                       </Button>
-                      <Button
-                        type="button"
-                        variant={mediaType === 'upload' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setMediaType('upload')}
-                      >
+                      <Button type="button" variant={mediaType === 'upload' ? 'default' : 'outline'} size="sm" onClick={() => setMediaType('upload')}>
                         Upload
                       </Button>
                     </div>
 
-                    {/* URL Input */}
                     {mediaType === 'url' && (
                       <div>
                         <Input
@@ -578,24 +529,17 @@ export default function NovaRecomendacaoPage() {
                           value={mediaUrl}
                           onChange={(e) => handleMediaUrlChange(e.target.value)}
                           onBlur={() => handleFieldBlur('media')}
-                          className={
-                            touched.media && errors.media
-                              ? 'border-red-500 focus:ring-red-500'
-                              : ''
-                          }
+                          className={cn(touched.media && errors.media && 'border-red-500')}
                         />
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Suportados: Spotify, YouTube, SoundCloud, Apple Music
-                        </p>
-                        {mediaUrl && (
-                          <p className="text-xs text-green-600 mt-1">
-                            ✓ URL válida para preview
+                        <p className="text-xs text-muted-foreground mt-2">Suportados: Spotify, YouTube, SoundCloud</p>
+                        {mediaUrl && !errors.media && (
+                          <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> URL válida
                           </p>
                         )}
                       </div>
                     )}
 
-                    {/* File Upload */}
                     {mediaType === 'upload' && (
                       <div>
                         <label
@@ -606,17 +550,18 @@ export default function NovaRecomendacaoPage() {
                           <span className="text-sm font-medium">
                             {mediaFile ? mediaFile.name : 'Clique ou arraste o arquivo'}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            MP3, WAV, FLAC (máx 50MB)
-                          </span>
+                          <span className="text-xs text-muted-foreground">MP3, WAV, FLAC (máx 50MB)</span>
                         </label>
-                        <input
-                          id="media-file"
-                          type="file"
-                          accept=".mp3,.wav,.flac"
-                          onChange={handleMediaFileChange}
-                          className="hidden"
-                        />
+                        <input id="media-file" type="file" accept=".mp3,.wav,.flac" onChange={handleMediaFileChange} className="hidden" />
+                        {mediaFile && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span className="text-sm">{mediaFile.name}</span>
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setMediaFile(null)}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -631,35 +576,24 @@ export default function NovaRecomendacaoPage() {
                   {/* Description */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label htmlFor="description" className="block text-sm font-medium">
-                        Descrição / Por que recomenda? *
+                      <label htmlFor="description" className="text-sm font-medium">
+                        Por que você recomenda? *
                       </label>
-                      <span
-                        className={`text-xs ${
-                          description.length > 450
-                            ? 'text-orange-500'
-                            : 'text-muted-foreground'
-                        }`}
-                      >
+                      <span className={cn('text-xs', description.length > 450 ? 'text-orange-500' : 'text-muted-foreground')}>
                         {description.length}/500
                       </span>
                     </div>
                     <textarea
                       id="description"
-                      placeholder="Compartilhe o que torna essa música especial para você. Seja criativo e detalhado!"
+                      placeholder="Compartilhe o que torna essa música especial. Mínimo 50 caracteres."
                       value={description}
-                      onChange={(e) => {
-                        if (e.target.value.length <= 500) {
-                          setDescription(e.target.value)
-                        }
-                      }}
+                      onChange={(e) => e.target.value.length <= 500 && setDescription(e.target.value)}
                       onBlur={() => handleFieldBlur('description')}
-                      rows={6}
-                      className={`w-full px-3 py-2 border rounded-md text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                        touched.description && errors.description
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-input'
-                      }`}
+                      rows={5}
+                      className={cn(
+                        'w-full px-3 py-2 border rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                        touched.description && errors.description ? 'border-red-500 focus:ring-red-500' : 'border-input'
+                      )}
                     />
                     {touched.description && errors.description && (
                       <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
@@ -672,100 +606,74 @@ export default function NovaRecomendacaoPage() {
                   {/* Tags */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <label className="block text-sm font-medium">
-                        Tags (Selecione pelo menos uma) *
-                      </label>
+                      <label className="text-sm font-medium">Tags (max 5) *</label>
                       {selectedTags.length > 0 && (
-                        <span className="text-xs text-green-500 font-medium">
-                          {selectedTags.length} selecionada{selectedTags.length > 1 ? 's' : ''}
-                        </span>
+                        <span className="text-xs text-green-500 font-medium">{selectedTags.length} selecionada{selectedTags.length > 1 ? 's' : ''}</span>
                       )}
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          'para-estudar',
-                          'festa',
-                          'relaxante',
-                          'energético',
-                          'melancólico',
-                          'indie',
-                          'clássico',
-                          'descoberta',
-                          'viral',
-                          'trending',
-                          'feel-good',
-                          'nostalgia',
-                          'motivação',
-                          'meditação',
-                          'road-trip',
-                          'dança',
-                          'soul',
-                          'alternative',
-                          'electro',
-                          'lo-fi',
-                          'acoustic',
-                          'uplifting',
-                          'dark',
-                          'experimental',
-                          'chill',
-                          'workout',
-                          'party',
-                          'romantic',
-                          'drama',
-                          'underground',
-                          'hit',
-                          'ost',
-                        ].map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant={
-                              selectedTags.includes(tag) ? 'default' : 'outline'
-                            }
-                            className="cursor-pointer transition-all hover:scale-105"
-                            onClick={() => {
-                              if (selectedTags.includes(tag)) {
-                                handleRemoveTag(tag)
-                              } else {
-                                handleAddTag(tag)
-                              }
-                              setTouched({ ...touched, tags: true })
-                            }}
-                          >
-                            {selectedTags.includes(tag) && (
-                              <Check className="w-3 h-3 mr-1" />
-                            )}
+
+                    {/* Selected Tags */}
+                    {selectedTags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {selectedTags.map((tag) => (
+                          <Badge key={tag} variant="default" className="gap-1 pr-1">
                             #{tag}
+                            <button type="button" onClick={() => handleRemoveTag(tag)} className="ml-1 hover:bg-white/20 rounded-full p-0.5">
+                              <X className="w-3 h-3" />
+                            </button>
                           </Badge>
                         ))}
                       </div>
-                      {touched.tags && errors.tags && (
-                        <p className="text-sm text-red-500 flex items-center gap-1">
-                          <AlertCircle className="w-4 h-4" />
-                          {errors.tags}
-                        </p>
-                      )}
+                    )}
+
+                    {/* Available Tags */}
+                    <div className="flex flex-wrap gap-2">
+                      {availableTags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                          className={cn(
+                            'cursor-pointer transition-all',
+                            selectedTags.includes(tag) ? '' : 'hover:bg-accent',
+                            selectedTags.length >= 5 && !selectedTags.includes(tag) && 'opacity-50 cursor-not-allowed'
+                          )}
+                          onClick={() => {
+                            if (selectedTags.includes(tag)) handleRemoveTag(tag)
+                            else if (selectedTags.length < 5) handleAddTag(tag)
+                            setTouched({ ...touched, tags: true })
+                          }}
+                        >
+                          {selectedTags.includes(tag) && <Check className="w-3 h-3 mr-1" />}
+                          #{tag}
+                        </Badge>
+                      ))}
                     </div>
+
+                    {touched.tags && errors.tags && (
+                      <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.tags}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Terms */}
+                  <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
+                    <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} />
+                    <label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                      Entendo que não poderei recomendar essa música novamente nos próximos 30 dias
+                    </label>
                   </div>
 
                   {/* Buttons */}
                   <div className="flex gap-3 pt-4 border-t">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.back()}
-                      disabled={isLoading}
-                    >
+                    <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
                       Cancelar
                     </Button>
-                    <Button
-                      type="submit"
-                      disabled={isLoading || !isFormValid}
-                      className="flex-1"
-                    >
+                    <Button type="submit" disabled={isLoading || !isFormValid} className="flex-1">
                       {isLoading ? (
                         <>
-                          <span className="animate-spin mr-2">⏳</span>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Publicando...
                         </>
                       ) : (
@@ -783,94 +691,64 @@ export default function NovaRecomendacaoPage() {
             {/* Preview & Tips Sidebar */}
             <div className="space-y-4">
               {/* Preview */}
-              {musicTitle || artist ? (
+              {(musicTitle || artist) && (
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <h3 className="text-sm font-semibold">Preview</h3>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center overflow-hidden">
-                        {mediaPreview && mediaType === 'url' ? (
-                          mediaPreview.includes('embed') ? (
-                            <iframe
-                              width="100%"
-                              height="100%"
-                              src={mediaPreview}
-                              frameBorder="0"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className="rounded"
-                              title="Média preview"
-                            />
-                          ) : (
-                            <div className="text-center p-4">
-                              <Music className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                              <p className="text-xs text-muted-foreground">
-                                Preview disponível
-                              </p>
-                            </div>
-                          )
-                        ) : (
-                          <Music className="w-12 h-12 text-muted-foreground" />
-                        )}
-                      </div>
-                      {musicTitle && (
-                        <div>
-                          <p className="text-sm font-semibold line-clamp-2">
-                            {musicTitle}
-                          </p>
-                        </div>
-                      )}
-                      {artist && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {artist}
-                        </p>
-                      )}
-                      {description && (
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {description}
-                        </p>
-                      )}
-                      {selectedTags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-2">
-                          {selectedTags.slice(0, 3).map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              #{tag}
-                            </Badge>
-                          ))}
-                          {selectedTags.length > 3 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{selectedTags.length - 3}
-                            </Badge>
-                          )}
-                        </div>
+                  <CardContent className="space-y-3">
+                    <div className="w-full aspect-square rounded-lg bg-linear-to-br from-primary/20 to-purple-600/20 flex items-center justify-center overflow-hidden">
+                      {mediaPreview?.includes('embed') ? (
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          src={mediaPreview}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="rounded"
+                          title="Preview"
+                        />
+                      ) : (
+                        <Music className="w-12 h-12 text-muted-foreground" />
                       )}
                     </div>
+                    {musicTitle && <p className="font-semibold line-clamp-2">{musicTitle}</p>}
+                    {artist && <p className="text-sm text-muted-foreground">{artist}</p>}
+                    {genre && <Badge variant="secondary">{genre}</Badge>}
+                    {description && <p className="text-xs text-muted-foreground line-clamp-3">{description}</p>}
+                    {selectedTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedTags.slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">#{tag}</Badge>
+                        ))}
+                        {selectedTags.length > 3 && <Badge variant="outline" className="text-xs">+{selectedTags.length - 3}</Badge>}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              ) : null}
+              )}
 
               {/* Tips */}
-              <Card className="bg-primary/5">
+              <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="pt-6">
-                  <h3 className="font-semibold text-sm mb-3">💡 Dicas</h3>
+                  <h3 className="font-semibold text-sm mb-3">Dicas</h3>
                   <ul className="space-y-2 text-xs text-muted-foreground">
                     <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Descreva emoções e sensações que a música despertou</span>
+                      <span className="text-primary font-bold">1.</span>
+                      Descreva emoções e sensações que a música despertou
                     </li>
                     <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Mencione quando/onde você ouve essa música</span>
+                      <span className="text-primary font-bold">2.</span>
+                      Mencione quando/onde você ouve essa música
                     </li>
                     <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Tags ajudam outros a encontrarem sua recomendação</span>
+                      <span className="text-primary font-bold">3.</span>
+                      Tags ajudam outros a encontrarem sua recomendação
                     </li>
                     <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Recomendações detalhadas recebem mais votações</span>
+                      <span className="text-primary font-bold">4.</span>
+                      Recomendações detalhadas recebem mais votos
                     </li>
                   </ul>
                 </CardContent>

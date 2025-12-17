@@ -1,22 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { auth } from "@/lib/api";
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  api?: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("registered") === "true") {
+      setSuccessMessage("Conta criada com sucesso! Faca login para continuar.");
+    }
+  }, [searchParams]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: FormErrors = {};
 
     if (!email) {
       newErrors.email = "Email e obrigatorio";
@@ -40,11 +53,27 @@ export default function LoginPage() {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
+    setSuccessMessage("");
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const { data, error } = await auth.signIn({
+      email: email.toLowerCase().trim(),
+      password,
+    });
 
-    // Redirect to dashboard
+    setIsLoading(false);
+
+    if (error) {
+      if (error.status === 401 || error.status === 400) {
+        setErrors({ api: "Email ou senha incorretos" });
+      } else if (error.status === 429) {
+        setErrors({ api: "Muitas tentativas. Tente novamente em alguns minutos." });
+      } else {
+        setErrors({ api: error.message });
+      }
+      return;
+    }
+
     router.push("/dashboard");
   };
 
@@ -129,6 +158,34 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* Success Message */}
+            {successMessage && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {successMessage}
+              </div>
+            )}
+
+            {/* API Error */}
+            {errors.api && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {errors.api}
+              </div>
+            )}
+
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email Field */}
@@ -161,8 +218,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      if (errors.email)
-                        setErrors({ ...errors, email: undefined });
+                      if (errors.email) setErrors({ ...errors, email: undefined });
                     }}
                     placeholder="seu@email.com"
                     autoComplete="email"
@@ -175,11 +231,7 @@ export default function LoginPage() {
                 </div>
                 {errors.email && (
                   <p className="mt-2 text-sm text-red-500 flex items-center gap-1.5">
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         fillRule="evenodd"
                         d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -235,11 +287,11 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-[oklch(0.5_0.02_264)] hover:text-[oklch(0.55_0.22_240)] transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
                   >
                     {showPassword ? (
                       <svg
-                        className="w-5 h-5"
+                        className="w-5 h-5 text-[oklch(0.5_0.02_264)]"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -253,7 +305,7 @@ export default function LoginPage() {
                       </svg>
                     ) : (
                       <svg
-                        className="w-5 h-5"
+                        className="w-5 h-5 text-[oklch(0.5_0.02_264)]"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -276,11 +328,7 @@ export default function LoginPage() {
                 </div>
                 {errors.password && (
                   <p className="mt-2 text-sm text-red-500 flex items-center gap-1.5">
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         fillRule="evenodd"
                         d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -294,34 +342,17 @@ export default function LoginPage() {
 
               {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-5 h-5 border-2 border-[oklch(0.8_0.01_264)] rounded-md peer-checked:bg-[oklch(0.55_0.22_240)] peer-checked:border-[oklch(0.55_0.22_240)] transition-all group-hover:border-[oklch(0.55_0.22_240)]" />
-                    <svg
-                      className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-[oklch(0.9_0.01_264)] text-[oklch(0.55_0.22_240)] focus:ring-[oklch(0.55_0.22_240)]/20"
+                  />
                   <span className="text-sm text-[oklch(0.4_0.02_264)]">
                     Lembrar-me
                   </span>
                 </label>
-
                 <Link
                   href="/recuperar-senha"
                   className="text-sm font-medium text-[oklch(0.55_0.22_240)] hover:underline"
@@ -377,70 +408,16 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Create Account Link */}
+            {/* Register Link */}
             <Link
               href="/cadastro"
-              className="block w-full py-3.5 border-2 border-[oklch(0.9_0.01_264)] text-[oklch(0.15_0.01_264)] rounded-xl font-semibold text-center hover:border-[oklch(0.55_0.22_240)] hover:text-[oklch(0.55_0.22_240)] transition-all"
+              className="block w-full py-4 text-center border-2 border-[oklch(0.55_0.22_240)] text-[oklch(0.55_0.22_240)] rounded-xl font-bold text-lg hover:bg-[oklch(0.55_0.22_240)]/5 transition-all"
             >
-              Criar Conta Gratis
+              Criar uma conta
             </Link>
-
-            {/* Continue as Guest */}
-            <div className="mt-6 text-center">
-              <Link
-                href="/"
-                className="text-sm text-[oklch(0.55_0.22_240)] hover:underline inline-flex items-center gap-1.5"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  />
-                </svg>
-                Continuar visitando
-              </Link>
-            </div>
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-[oklch(0.98_0.002_264)] border-t border-[oklch(0.9_0.01_264)] py-8">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-6 text-sm text-[oklch(0.5_0.02_264)]">
-              <Link
-                href="/termos"
-                className="hover:text-[oklch(0.15_0.01_264)] transition-colors"
-              >
-                Termos de Uso
-              </Link>
-              <Link
-                href="/privacidade"
-                className="hover:text-[oklch(0.15_0.01_264)] transition-colors"
-              >
-                Privacidade
-              </Link>
-              <Link
-                href="/contato"
-                className="hover:text-[oklch(0.15_0.01_264)] transition-colors"
-              >
-                Contato
-              </Link>
-            </div>
-            <p className="text-sm text-[oklch(0.5_0.02_264)]">
-              2025 BeMusicShare
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
