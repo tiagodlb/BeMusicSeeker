@@ -4,6 +4,7 @@ import { openapi } from "@elysiajs/openapi";
 import { cors } from "@elysiajs/cors";
 import { betterAuth } from "./core/auth/macro";
 import { recommendationRoutes } from "./nova-recomendacao/controller";
+import { userRoutes } from "./modules/perfil";
 
 const _server = new Elysia()
   .use(
@@ -25,6 +26,7 @@ const _server = new Elysia()
   .group("/v1", (app) =>
     app
       .use(betterAuth)
+      .use(userRoutes) 
       .use(recommendationRoutes)
       .get("/", "hi\n")
       .get("/user", ({ user }) => user, {
