@@ -7,6 +7,7 @@ export interface CreateRecommendationInput {
   genre: string;
   description: string;
   tags: string[];
+  coverImageUrl?: string;
   mediaUrl?: string;
   userId: number;
 }
@@ -143,10 +144,10 @@ export class RecommendationService {
           title: data.title.trim(),
           artist_id: data.userId,
           genre: data.genre,
-          description: data.artist.trim(), // artist name stored in description
+          description: data.artist.trim(),
           duration_seconds: 0,
           file_url: data.mediaUrl || "",
-          cover_image_url: "",
+          cover_image_url: data.coverImageUrl || null, // <--- USAR O CAMPO AQUI
           moderation_status: "pending",
         })
         .returningAll()
