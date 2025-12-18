@@ -86,7 +86,6 @@ export const userRoutes = new Elysia({
     }
   )
 
-  // GET /users/:id/stats - Estatisticas do usuario
   .get(
     "/:id/stats",
     async ({ params, status }) => {

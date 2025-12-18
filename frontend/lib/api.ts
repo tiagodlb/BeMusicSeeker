@@ -98,13 +98,13 @@ export type User = {
 
 export const auth = {
   signUp: (payload: SignUpPayload) =>
-    request<SignUpResponse>("/v1/api/sign-up", {
+    request<SignUpResponse>("/v1/auth/api/sign-up/email", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
   signIn: (payload: SignInPayload) =>
-    request<SignInResponse>("/v1/api/sign-in/email", {
+    request<SignInResponse>("/v1/auth/api/sign-in/email", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
@@ -121,8 +121,151 @@ export const auth = {
     ),
 };
 
+// ============ PROFILE ============
+
+export type ProfileStats = {
+  followers: number;
+  following: number;
+  recommendations: number;
+};
+
+export type Profile = {
+  id: string;
+  email: string;
+  name: string;
+  bio: string | null;
+  profilePictureUrl: string | null;
+  isArtist: boolean;
+  socialLinks: Record<string, string> | null;
+  createdAt: string;
+  stats: ProfileStats;
+};
+
+export type PublicProfile = Omit<Profile, "email"> & {
+  isFollowing: boolean;
+};
+
+export type UpdateProfilePayload = {
+  name?: string;
+  bio?: string | null;
+  profilePictureUrl?: string | null;
+  isArtist?: boolean;
+  socialLinks?: Record<string, string> | null;
+};
+
+export const profile = {
+  getMe: () => request<Profile>("/v1/profile/me", { method: "GET" }),
+
+  updateMe: (payload: UpdateProfilePayload) =>
+    request<Profile>("/v1/profile/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  getById: (id: string) =>
+    request<PublicProfile>(`/v1/profile/${id}`, { method: "GET" }),
+
+  follow: (id: string) =>
+    request<{ success: boolean; message: string }>(`/v1/profile/${id}/follow`, {
+      method: "POST",
+    }),
+
+  unfollow: (id: string) =>
+    request<{ success: boolean; message: string }>(`/v1/profile/${id}/follow`, {
+      method: "DELETE",
+    }),
+};
+
+// ============ USERS ============
+
+export type UserData = {
+  id: number;
+  email: string;
+  name: string;
+  bio: string | null;
+  profile_picture_url: string | null;
+  is_artist: boolean;
+  social_links: string;
+  created_at: string;
+};
+
+export type UserStats = {
+  postsCount: number;
+  songsCount: number;
+  followersCount: number;
+  followingCount: number;
+};
+
+export type UserListResponse = {
+  success: boolean;
+  data: UserData[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+};
+
+export type UserResponse = {
+  success: boolean;
+  data: UserData;
+};
+
+export type UserStatsResponse = {
+  success: boolean;
+  data: UserStats;
+};
+
+export type ListUsersParams = {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  is_artist?: boolean;
+};
+
+export type UpdateUserPayload = {
+  name?: string;
+  bio?: string;
+  profile_picture_url?: string;
+  is_artist?: boolean;
+  social_links?: string;
+};
+
+export const users = {
+  list: (params: ListUsersParams = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    if (params.offset) searchParams.set("offset", String(params.offset));
+    if (params.search) searchParams.set("search", params.search);
+    if (params.is_artist !== undefined)
+      searchParams.set("is_artist", String(params.is_artist));
+
+    const query = searchParams.toString();
+    return request<UserListResponse>(`/v1/users${query ? `?${query}` : ""}`);
+  },
+
+  getById: (id: number) => request<UserResponse>(`/v1/users/${id}`),
+
+  getStats: (id: number) => request<UserStatsResponse>(`/v1/users/${id}/stats`),
+
+  getMe: () => request<UserResponse>("/v1/users/me"),
+
+  update: (id: number, payload: UpdateUserPayload) =>
+    request<UserResponse>(`/v1/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  delete: (id: number) =>
+    request<{ success: boolean; message: string }>(`/v1/users/${id}`, {
+      method: "DELETE",
+    }),
+};
+
 export const api = {
   auth,
+  profile,
+  users,
   request,
 };
 

@@ -5,18 +5,26 @@ import { Pool } from "pg";
 
 const dialect = new PostgresDialect({
   pool: new Pool({
-    database: "bemusicseeker",
-    host: "localhost",
-    user: "postgres",
-    port: 51213,
-    max: 10,
+    // database: "bemusicseeker",
+    // host: "localhost",
+    // user: "postgres",
+    // password: "postgres",
+    // port: 51213,
+    // max: 10,
+    connectionString: process.env.DATABASE_URL,
+    ssl: false, 
   }),
 });
 
 export const auth = betterAuth({
   plugins: [openAPI()],
+  trustedOrigins: ["http://localhost:3001"], 
   basePath: 'api',
   database: dialect,
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+  },
 });
 
 let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>

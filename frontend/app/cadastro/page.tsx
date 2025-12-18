@@ -160,7 +160,7 @@ export default function CadastroPage() {
 
     setIsLoading(true);
     setErrors({});
-
+    console.log(name,email,password)
     const { data, error } = await auth.signUp({
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -173,6 +173,7 @@ export default function CadastroPage() {
       // handle specific errors
       if (error.status === 409 || error.message.toLowerCase().includes("email")) {
         setStep(1);
+        console.log(error.message)
         setErrors({ email: "Este email ja esta em uso" });
       } else {
         setErrors({ api: error.message });
