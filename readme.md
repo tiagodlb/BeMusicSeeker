@@ -1,8 +1,4 @@
-cd\
-
-cscript ospp.vbs /dstatus
-
-ospprearm.exe# 🎵 BeMusicSeeker (BeMusicShare)
+# 🎵 BeMusicSeeker (BeMusicShare)
 Plataforma backend para compartilhamento e descoberta de músicas.
 
 ---
