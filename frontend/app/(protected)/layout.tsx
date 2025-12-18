@@ -2,6 +2,7 @@
 
 import { Header } from '@/components/header'
 import { SidebarContent } from '@/components/sidebar'
+import { ThemeProvider } from '@/components/theme-provider'
 import { useAuth } from '@/lib/auth-context'
 import { Loader2 } from 'lucide-react'
 
@@ -32,25 +33,32 @@ export default function ProtectedLayout({
   if (!isAuthenticated) return <LoadingScreen />
 
   return (
-    <div className="min-h-screen bg-background">
-      
-      {/* Sidebar Desktop Fixa */}
-      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 lg:border-r lg:bg-card z-50">
-        <SidebarContent />
-      </aside>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <div className="min-h-screen bg-background">
 
-      {/* Wrapper do Conteúdo (Empurrado para a direita no desktop) */}
-      <div className="lg:pl-64 flex flex-col min-h-screen">
-        
-        {/* Header Global */}
-        <Header />
+        {/* Sidebar Desktop Fixa */}
+        <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 lg:border-r lg:bg-card z-50">
+          <SidebarContent />
+        </aside>
 
-        {/* Conteúdo da Página */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-          {children}
-        </main>
-        
+        {/* Wrapper do Conteúdo (Empurrado para a direita no desktop) */}
+        <div className="lg:pl-64 flex flex-col min-h-screen">
+
+          {/* Header Global */}
+          <Header />
+
+          {/* Conteúdo da Página */}
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full dark:text-muted-foreground">
+            {children}
+          </main>
+
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }

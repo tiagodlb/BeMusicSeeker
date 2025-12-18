@@ -90,7 +90,7 @@ export function SidebarContent({ currentPath }: SidebarContentProps) {
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
             <Music className="w-6 h-6 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg">BeMusicShare</span>
+          <span className="font-semibold text-lg dark:text-muted-foreground">BeMusicShare</span>
         </Link>
       </div>
 
@@ -181,7 +181,7 @@ export function SidebarContent({ currentPath }: SidebarContentProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm font-medium truncate">{user.name}</p>
+                  <p className="text-sm font-medium truncate dark:text-muted-foreground">{user.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {getUserTypeLabel(user.is_artist)}
                   </p>

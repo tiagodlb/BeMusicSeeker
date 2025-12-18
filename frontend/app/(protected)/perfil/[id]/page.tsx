@@ -30,6 +30,7 @@ import { getRecommendations, voteRecommendation, type Recommendation } from '@/l
 import { getFavorites, toggleFavorite, type FavoriteSong } from '@/lib/api/favourites'
 import { cn } from '@/lib/utils'
 import { CommentsDrawer } from '@/components/comments-drawer'
+import { resolveCoverUrl } from '@/utils/image'
 
 function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -112,7 +113,7 @@ function RecommendationCard({
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center">
               {rec.music.coverUrl ? (
-                <img src={rec.music.coverUrl} alt={rec.music.title} className="w-full h-full object-cover rounded-lg" />
+                <img src={resolveCoverUrl(rec.music.coverUrl) || ""} alt={rec.music.title} className="w-full h-full object-cover rounded-lg" />
               ) : (
                 <Music className="w-6 h-6 text-primary/60" />
               )}

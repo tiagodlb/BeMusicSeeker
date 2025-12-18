@@ -26,7 +26,7 @@ type AuthContextValue = AuthState & {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const PUBLIC_ROUTES = ['/', '/login', '/cadastro', '/recuperar-senha']
+const PUBLIC_ROUTES = ['/', '/entrar', '/cadastro', '/recuperar-senha']
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isPublic = PUBLIC_ROUTES.includes(pathname)
 
     if (!state.isAuthenticated && !isPublic) {
-      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`)
+      router.replace(`/entrar?redirect=${encodeURIComponent(pathname)}`)
     }
   }, [state.isLoading, state.isAuthenticated, pathname, router])
 
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await api.auth.signOut()
     setState({ user: null, isLoading: false, isAuthenticated: false })
-    router.replace('/login')
+    router.replace('/entrar')
   }, [router])
 
   const refresh = useCallback(async () => {

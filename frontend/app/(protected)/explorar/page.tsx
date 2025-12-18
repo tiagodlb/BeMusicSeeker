@@ -16,16 +16,18 @@ import {
   MessageCircle,
   UserPlus,
   Hash,
+  AlertCircle,
+  RefreshCcw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SidebarContent } from '@/components/sidebar'
+// Note: Removi Sheet e SidebarContent pois devem estar no Layout, 
+// mas se você ainda não moveu, mantenha-os ou use o ProtectedLayout sugerido antes.
 import {
   getExploreData,
   search as searchApi,
@@ -36,14 +38,11 @@ import {
 } from '@/lib/api/explore'
 import { toggleFollow } from '@/lib/api/follows'
 import { useAuth } from '@/lib/auth-context'
+import { resolveCoverUrl } from '@/utils/image'
 
+// ... mantenha as funções getInitials, UserCard, TrendingPostCard, SearchResultsView ...
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
 function UserCard({
@@ -113,7 +112,7 @@ function TrendingPostCard({ post }: { post: ExplorePost }) {
           <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
             {post.song.coverUrl ? (
               <img
-                src={post.song.coverUrl}
+                src={resolveCoverUrl(post.song.coverUrl) || ""}
                 alt={post.song.title}
                 className="w-full h-full object-cover rounded-lg"
               />
@@ -180,7 +179,7 @@ function SearchResultsView({
         <section>
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Usuarios ({results.users.length})
+            Usuários ({results.users.length})
           </h3>
           <div className="grid gap-3">
             {results.users.map((user) => (
@@ -209,7 +208,7 @@ function SearchResultsView({
         <section>
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <Music className="w-4 h-4" />
-            Musicas ({results.songs.length})
+            Músicas ({results.songs.length})
           </h3>
           <div className="grid gap-3">
             {results.songs.map((song) => (
@@ -219,7 +218,7 @@ function SearchResultsView({
                     <div className="w-10 h-10 rounded bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
                       {song.coverUrl ? (
                         <img
-                          src={song.coverUrl}
+                          src={resolveCoverUrl(song.coverUrl) || ""}
                           alt={song.title}
                           className="w-full h-full object-cover rounded"
                         />
@@ -282,26 +281,37 @@ export default function ExplorarPage() {
   const { isAuthenticated } = useAuth()
   const [data, setData] = useState<ExploreData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null) // Novo estado de erro
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [togglingFollowId, setTogglingFollowId] = useState<number | null>(null)
 
-  useEffect(() => {
-    async function loadData() {
-      setIsLoading(true)
-      try {
-        const response = await getExploreData()
-        if (response.success && response.data) {
-          setData(response.data)
-        }
-      } finally {
-        setIsLoading(false)
+  async function loadData() {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await getExploreData()
+      if (response.success && response.data) {
+        setData(response.data)
+      } else {
+        // Se a resposta não for sucesso, definimos o erro
+        setError(response.error || 'Falha ao carregar dados do explorar')
+        console.error('Explore API Error:', response.error)
       }
+    } catch (err) {
+      setError('Erro de conexão ao carregar dados')
+      console.error(err)
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
     loadData()
   }, [])
 
+  // ... lógica de debounce da busca (igual) ...
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.length >= 2) {
@@ -323,6 +333,7 @@ export default function ExplorarPage() {
   }, [searchQuery])
 
   const handleFollowToggle = async (userId: number) => {
+    // ... sua lógica existente de follow ...
     if (!isAuthenticated) return
 
     setTogglingFollowId(userId)
@@ -347,7 +358,6 @@ export default function ExplorarPage() {
 
   return (
     <div className="min-h-screen bg-background">
-        {/* Content */}
         <main className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
           <section className="mb-8">
             <h1 className="text-2xl font-bold tracking-tight mb-2 flex items-center gap-2">
@@ -355,18 +365,39 @@ export default function ExplorarPage() {
               Explorar
             </h1>
             <p className="text-muted-foreground">
-              Descubra novos curadores, artistas e musicas
+              Descubra novos curadores, artistas e músicas
             </p>
+
+            {/* Input de busca local, caso não esteja usando o Header global */}
+            <div className="mt-4 max-w-md">
+                 <Input 
+                   placeholder="Buscar usuários ou músicas..." 
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                 />
+            </div>
           </section>
 
           {isShowingSearch ? (
             <SearchResultsView results={searchResults} isLoading={isSearching} />
           ) : isLoading ? (
             <LoadingSkeleton />
+          ) : error ? (
+            // Exibição do Erro
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+                <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Ops, algo deu errado</h3>
+                <p className="text-muted-foreground mb-6">{error}</p>
+                <Button onClick={() => loadData()}>
+                    <RefreshCcw className="w-4 h-4 mr-2" />
+                    Tentar Novamente
+                </Button>
+            </div>
           ) : data ? (
+            // Exibição dos Dados (Se data existir)
             <Tabs defaultValue="users" className="space-y-6">
               <TabsList>
-                <TabsTrigger value="users">Usuarios</TabsTrigger>
+                <TabsTrigger value="users">Usuários</TabsTrigger>
                 <TabsTrigger value="trending">Em Alta</TabsTrigger>
                 <TabsTrigger value="tags">Tags</TabsTrigger>
               </TabsList>
@@ -376,17 +407,19 @@ export default function ExplorarPage() {
                 <section>
                   <h2 className="font-semibold mb-4 flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
-                    Usuarios Populares
+                    Usuários Populares
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {data.popularUsers.map((user) => (
+                    {data.popularUsers.length > 0 ? data.popularUsers.map((user) => (
                       <UserCard
                         key={user.id}
                         user={user}
                         onFollowToggle={handleFollowToggle}
                         isTogglingFollow={togglingFollowId === user.id}
                       />
-                    ))}
+                    )) : (
+                        <p className="text-muted-foreground col-span-2">Nenhum usuário popular encontrado.</p>
+                    )}
                   </div>
                 </section>
 
@@ -415,7 +448,7 @@ export default function ExplorarPage() {
                 <section>
                   <h2 className="font-semibold mb-4 flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
-                    Recomendacoes em Alta
+                    Recomendações em Alta
                   </h2>
                   {data.trendingPosts.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -425,7 +458,7 @@ export default function ExplorarPage() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-center py-8">
-                      Nenhuma recomendacao em alta no momento
+                      Nenhuma recomendação em alta no momento
                     </p>
                   )}
                 </section>
@@ -435,7 +468,7 @@ export default function ExplorarPage() {
                   <section>
                     <h2 className="font-semibold mb-4 flex items-center gap-2">
                       <Music className="w-4 h-4" />
-                      Generos Populares
+                      Gêneros Populares
                     </h2>
                     <div className="flex flex-wrap gap-2">
                       {data.popularGenres.map((g) => (
@@ -476,7 +509,12 @@ export default function ExplorarPage() {
                 </section>
               </TabsContent>
             </Tabs>
-          ) : null}
+          ) : (
+            // Caso de fallback extremo (não deveria acontecer com o tratamento de erro acima)
+             <div className="text-center py-12">
+                 <p className="text-muted-foreground">Não foi possível carregar os dados.</p>
+             </div>
+          )}
         </main>
       </div>
   )
