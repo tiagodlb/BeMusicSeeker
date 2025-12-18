@@ -1,4 +1,5 @@
 import { prisma } from "../db/client";
+import { sql } from "kysely";
 
 export interface CreateRecommendationInput {
   title: string;
@@ -214,8 +215,16 @@ export class RecommendationService {
     }
   }
 
-  async getRecommendations(limit = 10, offset = 0, currentUserId?: number) {
-    const posts = await prisma
+  async getRecommendations(
+    limit = 10, 
+    offset = 0, 
+    currentUserId?: number, 
+    filterUserId?: number,
+    sortBy: 'recent' | 'trending' | 'top' = 'recent',
+    period: 'today' | 'week' | 'month' | 'all' = 'all',
+    genre?: string
+  ) {
+    let query = prisma
       .selectFrom("posts")
       .innerJoin("users", "posts.user_id", "users.id")
       .innerJoin("songs", "posts.song_id", "songs.id")
@@ -237,8 +246,42 @@ export class RecommendationService {
         "songs.cover_image_url",
         "songs.file_url",
         "post_tags.tag",
-      ])
-      .orderBy("posts.created_at", "desc")
+      ]);
+
+    // filter by user if specified
+    if (filterUserId) {
+      query = query.where("posts.user_id", "=", filterUserId);
+    }
+
+    // filter by genre
+    if (genre && genre !== 'all') {
+      query = query.where("songs.genre", "=", genre);
+    }
+
+    // filter by period
+    if (period !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      
+      if (period === 'today') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (period === 'week') {
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else {
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+      
+      query = query.where("posts.created_at", ">=", startDate);
+    }
+
+    // sort order
+    if (sortBy === 'trending' || sortBy === 'top') {
+      query = query.orderBy("posts.upvotes_count", "desc");
+    } else {
+      query = query.orderBy("posts.created_at", "desc");
+    }
+
+    const posts = await query
       .limit(limit)
       .offset(offset)
       .execute();
@@ -303,5 +346,62 @@ export class RecommendationService {
     });
 
     return Array.from(groupedPosts.values());
+  }
+
+  async getRankings(
+    limit = 20,
+    type: 'curators' | 'artists' = 'curators',
+    period: 'week' | 'month' | 'all' = 'all'
+  ) {
+    // Build period filter
+    let periodFilter = '';
+    if (period !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      if (period === 'week') {
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else {
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+      periodFilter = startDate.toISOString();
+    }
+
+    // Get users with aggregated stats from posts
+    const results = await prisma
+      .selectFrom("users")
+      .leftJoin("posts", "users.id", "posts.user_id")
+      .leftJoin("follows", "users.id", "follows.following_id")
+      .select([
+        "users.id",
+        "users.name",
+        "users.profile_picture_url",
+        "users.is_artist",
+      ])
+      .select((eb) => [
+        eb.fn.count<number>("posts.id").distinct().as("posts_count"),
+        eb.fn.coalesce(
+          eb.fn.sum<number>("posts.upvotes_count"),
+          sql<number>`0`
+        ).as("total_votes"),
+        eb.fn.count<number>("follows.id").distinct().as("followers_count"),
+      ])
+      .where("users.is_artist", "=", type === 'artists')
+      .groupBy(["users.id", "users.name", "users.profile_picture_url", "users.is_artist"])
+      .orderBy(sql`total_votes`, "desc")
+      .limit(limit)
+      .execute();
+
+    return results.map((r: any, index: number) => ({
+      id: r.id,
+      position: index + 1,
+      name: r.name,
+      avatar: r.profile_picture_url,
+      isArtist: r.is_artist,
+      stats: {
+        recommendations: Number(r.posts_count) || 0,
+        totalVotes: Number(r.total_votes) || 0,
+        followers: Number(r.followers_count) || 0,
+      },
+    }));
   }
 }

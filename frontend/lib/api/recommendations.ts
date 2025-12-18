@@ -31,6 +31,7 @@ export interface Recommendation {
     downvotes: number
     comments: number
   }
+  userVote?: 'up' | 'down' | null
   createdAt: string
 }
 
@@ -66,11 +67,32 @@ export interface RecommendationsListResponse {
   }
 }
 
-export async function getRecommendations(limit = 10, offset = 0): Promise<RecommendationsListResponse> {
+export interface GetRecommendationsParams {
+  limit?: number
+  offset?: number
+  userId?: number
+  sortBy?: 'recent' | 'trending' | 'top'
+  period?: 'today' | 'week' | 'month' | 'all'
+  genre?: string
+}
+
+export async function getRecommendations(
+  limit = 10, 
+  offset = 0,
+  userId?: number,
+  sortBy?: 'recent' | 'trending' | 'top',
+  period?: 'today' | 'week' | 'month' | 'all',
+  genre?: string
+): Promise<RecommendationsListResponse> {
   const params = new URLSearchParams({
     limit: limit.toString(),
     offset: offset.toString(),
   })
+  
+  if (userId) params.set('userId', userId.toString())
+  if (sortBy) params.set('sortBy', sortBy)
+  if (period) params.set('period', period)
+  if (genre && genre !== 'all') params.set('genre', genre)
 
   const response = await fetch(`${API_BASE_URL}/v1/recommendations?${params}`, {
     method: 'GET',
@@ -111,6 +133,50 @@ export async function voteRecommendation(
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Erro ao votar' }))
     throw new Error(error.error || error.message || `HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export interface RankingUser {
+  id: number
+  position: number
+  name: string
+  avatar: string | null
+  isArtist: boolean
+  stats: {
+    recommendations: number
+    totalVotes: number
+    followers: number
+  }
+}
+
+export interface RankingsResponse {
+  success: boolean
+  data: RankingUser[]
+}
+
+export async function getRankings(
+  type: 'curators' | 'artists' = 'curators',
+  period: 'week' | 'month' | 'all' = 'all',
+  limit = 20
+): Promise<RankingsResponse> {
+  const params = new URLSearchParams({
+    type,
+    period,
+    limit: limit.toString(),
+  })
+
+  const response = await fetch(`${API_BASE_URL}/v1/recommendations/rankings?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar rankings')
   }
 
   return response.json()

@@ -115,8 +115,11 @@ export const recommendationRoutes = new Elysia({
     async (ctx) => {
       const limit = Math.min(ctx.query.limit ? parseInt(ctx.query.limit) : 10, 100);
       const offset = ctx.query.offset ? parseInt(ctx.query.offset) : 0;
+      const filterUserId = ctx.query.userId ? parseInt(ctx.query.userId) : undefined;
+      const sortBy = (ctx.query.sortBy as 'recent' | 'trending' | 'top') || 'recent';
+      const period = (ctx.query.period as 'today' | 'week' | 'month' | 'all') || 'all';
+      const genre = ctx.query.genre;
 
-      // check session manually (without blocking if not logged in)
       let currentUserId: number | undefined;
       try {
         const session = await auth.api.getSession({
@@ -126,15 +129,17 @@ export const recommendationRoutes = new Elysia({
           const dbUser = await UserRepository.findByEmail(session.user.email);
           currentUserId = dbUser?.id;
         }
-      } catch {
-        // not logged in, that's fine
-      }
+      } catch {}
 
       try {
         const recommendations = await recommendationService.getRecommendations(
           limit,
           offset,
-          currentUserId
+          currentUserId,
+          filterUserId,
+          sortBy,
+          period,
+          genre
         );
         return {
           success: true,
@@ -153,10 +158,47 @@ export const recommendationRoutes = new Elysia({
       query: t.Object({
         limit: t.Optional(t.String()),
         offset: t.Optional(t.String()),
+        userId: t.Optional(t.String()),
+        sortBy: t.Optional(t.String()),
+        period: t.Optional(t.String()),
+        genre: t.Optional(t.String()),
       }),
       detail: {
         tags: ["Recommendations"],
         summary: "Listar recomendacoes",
+      },
+    }
+  )
+  .get(
+    "/rankings",
+    async (ctx) => {
+      const limit = Math.min(ctx.query.limit ? parseInt(ctx.query.limit) : 20, 100);
+      const type = (ctx.query.type as 'curators' | 'artists') || 'curators';
+      const period = (ctx.query.period as 'week' | 'month' | 'all') || 'all';
+
+      try {
+        const rankings = await recommendationService.getRankings(limit, type, period);
+        return {
+          success: true,
+          data: rankings,
+        };
+      } catch (err) {
+        console.error('Rankings error:', err);
+        return {
+          success: false,
+          data: [],
+        };
+      }
+    },
+    {
+      query: t.Object({
+        limit: t.Optional(t.String()),
+        type: t.Optional(t.String()),
+        period: t.Optional(t.String()),
+      }),
+      detail: {
+        tags: ["Recommendations"],
+        summary: "Rankings de curadores e artistas",
       },
     }
   );
