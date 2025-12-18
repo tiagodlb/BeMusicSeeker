@@ -19,7 +19,52 @@ export interface ListUsersOptions {
   isArtist?: boolean;
 }
 
+export interface CreateUserData {
+  email: string;
+  name: string;
+  password_hash: string;
+  bio?: string;
+  profile_picture_url?: string;
+  is_artist?: boolean;
+  social_links?: string;
+}
+
 export abstract class UserRepository {
+  static async create(data: CreateUserData): Promise<UserRow | null> {
+    try {
+      const user = await prisma
+        .insertInto("users")
+        .values({
+          email: data.email,
+          name: data.name,
+          password_hash: data.password_hash,
+          bio: data.bio ?? null,
+          profile_picture_url: data.profile_picture_url ?? null,
+          is_artist: data.is_artist ?? false,
+          social_links: data.social_links ?? "{}",
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning([
+          "id",
+          "email",
+          "name",
+          "bio",
+          "profile_picture_url",
+          "is_artist",
+          "social_links",
+          "created_at",
+          "updated_at",
+        ])
+        .executeTakeFirst();
+
+      return user ?? null;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      return null;
+    }
+  }
+
   static async findById(id: number): Promise<UserRow | null> {
     const user = await prisma
       .selectFrom("users")
@@ -82,7 +127,6 @@ export abstract class UserRepository {
       .selectFrom("users")
       .select((eb) => eb.fn.countAll<number>().as("count"));
 
-    // Apply search filter
     if (options.search) {
       const searchTerm = `%${options.search}%`;
       query = query.where((eb) =>
@@ -99,13 +143,11 @@ export abstract class UserRepository {
       );
     }
 
-    // Apply is_artist filter
     if (options.isArtist !== undefined) {
       query = query.where("is_artist", "=", options.isArtist);
       countQuery = countQuery.where("is_artist", "=", options.isArtist);
     }
 
-    // Apply pagination and ordering
     const users = await query
       .orderBy("created_at", "desc")
       .limit(options.limit)

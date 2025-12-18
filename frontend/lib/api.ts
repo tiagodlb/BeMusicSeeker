@@ -110,70 +110,15 @@ export const auth = {
     }),
 
   signOut: () =>
-    request<{ success: boolean }>("/v1/api/sign-out", {
+    request<{ success: boolean }>("/v1/auth/api/sign-out", {
       method: "POST",
     }),
 
   getSession: () =>
     request<{ user: User; session: { id: string; expiresAt: string } }>(
-      "/v1/api/get-session",
+      "/v1/auth/api/get-session",
       { method: "GET" }
     ),
-};
-
-// ============ PROFILE ============
-
-export type ProfileStats = {
-  followers: number;
-  following: number;
-  recommendations: number;
-};
-
-export type Profile = {
-  id: string;
-  email: string;
-  name: string;
-  bio: string | null;
-  profilePictureUrl: string | null;
-  isArtist: boolean;
-  socialLinks: Record<string, string> | null;
-  createdAt: string;
-  stats: ProfileStats;
-};
-
-export type PublicProfile = Omit<Profile, "email"> & {
-  isFollowing: boolean;
-};
-
-export type UpdateProfilePayload = {
-  name?: string;
-  bio?: string | null;
-  profilePictureUrl?: string | null;
-  isArtist?: boolean;
-  socialLinks?: Record<string, string> | null;
-};
-
-export const profile = {
-  getMe: () => request<Profile>("/v1/profile/me", { method: "GET" }),
-
-  updateMe: (payload: UpdateProfilePayload) =>
-    request<Profile>("/v1/profile/me", {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    }),
-
-  getById: (id: string) =>
-    request<PublicProfile>(`/v1/profile/${id}`, { method: "GET" }),
-
-  follow: (id: string) =>
-    request<{ success: boolean; message: string }>(`/v1/profile/${id}/follow`, {
-      method: "POST",
-    }),
-
-  unfollow: (id: string) =>
-    request<{ success: boolean; message: string }>(`/v1/profile/${id}/follow`, {
-      method: "DELETE",
-    }),
 };
 
 // ============ USERS ============
@@ -196,6 +141,10 @@ export type UserStats = {
   followingCount: number;
 };
 
+export type UserWithStats = UserData & {
+  stats: UserStats;
+};
+
 export type UserListResponse = {
   success: boolean;
   data: UserData[];
@@ -209,6 +158,11 @@ export type UserListResponse = {
 export type UserResponse = {
   success: boolean;
   data: UserData;
+};
+
+export type UserMeResponse = {
+  success: boolean;
+  data: UserWithStats;
 };
 
 export type UserStatsResponse = {
@@ -248,7 +202,7 @@ export const users = {
 
   getStats: (id: number) => request<UserStatsResponse>(`/v1/users/${id}/stats`),
 
-  getMe: () => request<UserResponse>("/v1/users/me"),
+  getMe: () => request<UserMeResponse>("/v1/users/me"),
 
   update: (id: number, payload: UpdateUserPayload) =>
     request<UserResponse>(`/v1/users/${id}`, {
@@ -264,7 +218,6 @@ export const users = {
 
 export const api = {
   auth,
-  profile,
   users,
   request,
 };

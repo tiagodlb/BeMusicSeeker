@@ -1,44 +1,92 @@
-import { Elysia } from "elysia";
-import { UserService } from "./service";
-import { UserModel } from "./model";
+import Elysia from "elysia";
 import { betterAuth } from "../../core/auth/macro";
+import { UserModel } from "./model";
+import { UserService } from "./service";
+import { UserRepository } from "./repository";
 
-export const userRoutes = new Elysia({
-  prefix: "/users",
-  detail: {
-    tags: ["Users"],
-  },
-})
+export const userRoutes = new Elysia({ prefix: "/users" })
   .use(betterAuth)
+  // ==========================================
+  // GET /me - Usuário atual (por email do auth)
+  // ==========================================
+  .get(
+    "/me",
+    async ({ user, status }) => {
+      if (!user?.id || !user?.email) {
+        return status(401, { success: false, error: "Nao autenticado" });
+      }
+
+      // Buscar pelo EMAIL, não pelo ID (better-auth usa UUID, nossa tabela usa integer)
+      let dbUser = await UserRepository.findByEmail(user.email);
+
+      // Se não existir na tabela users, criar automaticamente (sync com better-auth)
+      if (!dbUser) {
+        const userName = user.name || user.email.split("@")[0] || "Usuario";
+        const createResult = await UserRepository.create({
+          email: user.email,
+          name: userName,
+          password_hash: "", // não usado, auth é pelo better-auth
+        });
+
+        if (!createResult) {
+          return status(500, { success: false, error: "Erro ao sincronizar usuario" });
+        }
+
+        dbUser = createResult;
+      }
+
+      // Buscar stats
+      const stats = await UserRepository.getStats(dbUser.id);
+
+      return {
+        success: true,
+        data: {
+          ...dbUser,
+          stats: stats ?? {
+            postsCount: 0,
+            songsCount: 0,
+            followersCount: 0,
+            followingCount: 0,
+          },
+        },
+      };
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Usuario atual",
+        description: "Retorna os dados do usuario autenticado",
+      },
+    }
+  )
+
+  // ==========================================
+  // GET / - Listar usuários
+  // ==========================================
   .get(
     "/",
-    async ({ query, status }) => {
-      const limit = Math.min(query.limit ? parseInt(query.limit) : 20, 100);
-      const offset = query.offset ? parseInt(query.offset) : 0;
-      const search = query.search || undefined;
-      const isArtist =
-        query.is_artist !== undefined
-          ? query.is_artist === "true"
-          : undefined;
-
+    async ({ query }) => {
       const result = await UserService.list({
-        limit,
-        offset,
-        search,
-        isArtist,
+        limit: Number(query.limit) || 20,
+        offset: Number(query.offset) || 0,
+        search: query.search,
+        isArtist: query.is_artist === "true" ? true : query.is_artist === "false" ? false : undefined,
       });
 
       if (result.error) {
-        return status(500, { success: false, error: result.error.message });
+        return {
+          success: false,
+          error: result.error.message,
+        };
       }
 
       return {
         success: true,
-        data: result.data.users,
+        data: result.data!.users,
         pagination: {
-          total: result.data.total,
-          limit,
-          offset,
+          total: result.data!.total,
+          limit: Number(query.limit) || 20,
+          offset: Number(query.offset) || 0,
         },
       };
     },
@@ -46,16 +94,18 @@ export const userRoutes = new Elysia({
       query: UserModel.listQuery,
       detail: {
         summary: "Listar usuarios",
-        description: "Lista todos os usuarios com paginacao e filtros",
+        description: "Lista usuarios com filtros e paginacao",
       },
     }
   )
 
+  // ==========================================
+  // GET /:id - Buscar por ID
+  // ==========================================
   .get(
     "/:id",
     async ({ params, status }) => {
       const id = parseInt(params.id);
-
       const result = await UserService.getById(id);
 
       if (result.error) {
@@ -80,17 +130,19 @@ export const userRoutes = new Elysia({
     {
       params: UserModel.getByIdParams,
       detail: {
-        summary: "Buscar usuario por ID",
-        description: "Retorna os dados publicos de um usuario",
+        summary: "Buscar usuario",
+        description: "Retorna um usuario pelo ID",
       },
     }
   )
 
+  // ==========================================
+  // GET /:id/stats - Estatísticas do usuário
+  // ==========================================
   .get(
     "/:id/stats",
     async ({ params, status }) => {
       const id = parseInt(params.id);
-
       const result = await UserService.getStats(id);
 
       if (result.error) {
@@ -121,15 +173,24 @@ export const userRoutes = new Elysia({
     }
   )
 
+  // ==========================================
+  // PUT /:id - Atualizar perfil
+  // ==========================================
   .put(
     "/:id",
     async ({ params, body, user, status }) => {
-      if (!user?.id) {
+      if (!user?.email) {
         return status(401, { success: false, error: "Nao autenticado" });
       }
 
+      // Buscar usuário atual pelo email
+      const currentUser = await UserRepository.findByEmail(user.email);
+      if (!currentUser) {
+        return status(401, { success: false, error: "Usuario nao encontrado" });
+      }
+
       const id = parseInt(params.id);
-      const result = await UserService.update(id, body, parseInt(user.id));
+      const result = await UserService.update(id, body, currentUser.id);
 
       if (result.error) {
         const statusCode =
@@ -163,15 +224,24 @@ export const userRoutes = new Elysia({
     }
   )
 
+  // ==========================================
+  // DELETE /:id - Deletar conta
+  // ==========================================
   .delete(
     "/:id",
     async ({ params, user, status }) => {
-      if (!user?.id) {
+      if (!user?.email) {
         return status(401, { success: false, error: "Nao autenticado" });
       }
 
+      // Buscar usuário atual pelo email
+      const currentUser = await UserRepository.findByEmail(user.email);
+      if (!currentUser) {
+        return status(401, { success: false, error: "Usuario nao encontrado" });
+      }
+
       const id = parseInt(params.id);
-      const result = await UserService.delete(id, parseInt(user.id));
+      const result = await UserService.delete(id, currentUser.id);
 
       if (result.error) {
         const statusCode =
@@ -200,33 +270,6 @@ export const userRoutes = new Elysia({
       detail: {
         summary: "Deletar conta",
         description: "Deleta a conta do usuario autenticado",
-      },
-    }
-  )
-
-  .get(
-    "/me",
-    async ({ user, status }) => {
-      if (!user?.id) {
-        return status(401, { success: false, error: "Nao autenticado" });
-      }
-
-      const result = await UserService.getById(parseInt(user.id));
-
-      if (result.error) {
-        return status(404, { success: false, error: result.error.message });
-      }
-
-      return {
-        success: true,
-        data: result.data,
-      };
-    },
-    {
-      auth: true,
-      detail: {
-        summary: "Usuario atual",
-        description: "Retorna os dados do usuario autenticado",
       },
     }
   );

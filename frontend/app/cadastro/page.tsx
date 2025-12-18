@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 type UserType = "artista" | "curador" | "explorador" | "";
 
@@ -93,7 +94,8 @@ export default function CadastroPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
-
+  const { register } = useAuth()
+  
   const validateStep1 = () => {
     const newErrors: FormErrors = {};
 
@@ -153,37 +155,17 @@ export default function CadastroPage() {
     setErrors({});
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateStep2()) return;
-
-    setIsLoading(true);
-    setErrors({});
-    console.log(name,email,password)
-    const { data, error } = await auth.signUp({
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      password,
-    });
-
-    setIsLoading(false);
-
-    if (error) {
-      // handle specific errors
-      if (error.status === 409 || error.message.toLowerCase().includes("email")) {
-        setStep(1);
-        console.log(error.message)
-        setErrors({ email: "Este email ja esta em uso" });
-      } else {
-        setErrors({ api: error.message });
-      }
-      return;
+   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    const result = await register(name, email, password)
+    
+    if (result.success) {
+      router.push('/dashboard')  // redireciona após cadastro+login
+    } else {
+setErrors({ api: result.error ?? 'Erro ao entrar' })
     }
-
-    // success - redirect to login or dashboard
-    router.push("/entrar?registered=true");
-  };
+  }
 
   const getPasswordStrength = () => {
     if (!password) return { strength: 0, label: "", color: "" };

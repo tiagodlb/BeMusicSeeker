@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { customFont } from "./fonts";
+import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: {
@@ -57,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={customFont.variable}>
       <body className={`antialiased ${customFont.className} bg-[oklch(0.99_0.002_264)] text-[oklch(0.15_0.01_264)]`}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

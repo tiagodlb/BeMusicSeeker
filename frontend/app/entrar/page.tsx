@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 interface FormErrors {
   email?: string;
@@ -12,8 +13,9 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const { login, isAuthenticated } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -21,6 +23,15 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const redirect = searchParams.get('redirect') ?? '/dashboard'
+      router.replace(redirect)
+    }
+  }, [isAuthenticated, router, searchParams])
+
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
@@ -48,34 +59,20 @@ export default function LoginPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
+    setIsLoading(true)
 
-    if (!validateForm()) return;
+    const result = await login(email, password)
 
-    setIsLoading(true);
-    setErrors({});
-    setSuccessMessage("");
-
-    const { data, error } = await auth.signIn({
-      email: email.toLowerCase().trim(),
-      password,
-    });
-
-    setIsLoading(false);
-
-    if (error) {
-      if (error.status === 401 || error.status === 400) {
-        setErrors({ api: "Email ou senha incorretos" });
-      } else if (error.status === 429) {
-        setErrors({ api: "Muitas tentativas. Tente novamente em alguns minutos." });
-      } else {
-        setErrors({ api: error.message });
-      }
-      return;
+    if (result.success) {
+      const redirect = searchParams.get('redirect') ?? '/dashboard'
+      router.push(redirect)
+    } else {
+      setErrors({ api: result.error ?? 'Erro ao entrar' })
     }
 
-    router.push("/dashboard");
-  };
+    setIsLoading(false)
+  }
 
   return (
     <div className="min-h-screen bg-[oklch(0.99_0.002_264)] font-['Nohemi',sans-serif] flex flex-col">
@@ -222,11 +219,10 @@ export default function LoginPage() {
                     }}
                     placeholder="seu@email.com"
                     autoComplete="email"
-                    className={`w-full pl-12 pr-4 py-3.5 bg-[oklch(0.98_0.002_264)] border rounded-xl font-medium text-[oklch(0.15_0.01_264)] placeholder:text-[oklch(0.6_0.02_264)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.55_0.22_240)]/20 focus:border-[oklch(0.55_0.22_240)] transition-all ${
-                      errors.email
+                    className={`w-full pl-12 pr-4 py-3.5 bg-[oklch(0.98_0.002_264)] border rounded-xl font-medium text-[oklch(0.15_0.01_264)] placeholder:text-[oklch(0.6_0.02_264)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.55_0.22_240)]/20 focus:border-[oklch(0.55_0.22_240)] transition-all ${errors.email
                         ? "border-red-400 bg-red-50/50"
                         : "border-[oklch(0.9_0.01_264)]"
-                    }`}
+                      }`}
                   />
                 </div>
                 {errors.email && (
@@ -278,11 +274,10 @@ export default function LoginPage() {
                     }}
                     placeholder="Sua senha"
                     autoComplete="current-password"
-                    className={`w-full pl-12 pr-12 py-3.5 bg-[oklch(0.98_0.002_264)] border rounded-xl font-medium text-[oklch(0.15_0.01_264)] placeholder:text-[oklch(0.6_0.02_264)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.55_0.22_240)]/20 focus:border-[oklch(0.55_0.22_240)] transition-all ${
-                      errors.password
+                    className={`w-full pl-12 pr-12 py-3.5 bg-[oklch(0.98_0.002_264)] border rounded-xl font-medium text-[oklch(0.15_0.01_264)] placeholder:text-[oklch(0.6_0.02_264)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.55_0.22_240)]/20 focus:border-[oklch(0.55_0.22_240)] transition-all ${errors.password
                         ? "border-red-400 bg-red-50/50"
                         : "border-[oklch(0.9_0.01_264)]"
-                    }`}
+                      }`}
                   />
                   <button
                     type="button"
