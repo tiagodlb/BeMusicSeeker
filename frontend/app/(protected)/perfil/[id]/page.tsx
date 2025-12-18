@@ -278,7 +278,7 @@ export default function PerfilPage({ params }: { params: Promise<{ id: string }>
   const [activeTab, setActiveTab] = useState('recomendacoes')
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loadingRecs, setLoadingRecs] = useState(true)
-  
+
   // favorites state
   const [favorites, setFavorites] = useState<FavoriteSong[]>([])
   const [loadingFavorites, setLoadingFavorites] = useState(false)
@@ -308,7 +308,7 @@ export default function PerfilPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     async function loadFavorites() {
       if (activeTab !== 'curtidas' || !isOwner || favoritesLoaded) return
-      
+
       setLoadingFavorites(true)
       try {
         const response = await getFavorites(50, 0)
@@ -385,145 +385,126 @@ export default function PerfilPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 lg:border-r lg:bg-card"><SidebarContent /></aside>
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-          <div className="flex h-14 items-center justify-between px-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              <Sheet>
-                <SheetTrigger asChild><Button variant="ghost" size="icon" className="lg:hidden"><Menu className="w-5 h-5" /></Button></SheetTrigger>
-                <SheetContent side="left" className="w-64 p-0"><SidebarContent /></SheetContent>
-              </Sheet>
-              <h1 className="font-semibold">Perfil</h1>
+      <main className="pb-8">
+        <div className="max-w-3xl mx-auto">
+          {isLoading ? <ProfileSkeleton /> : error ? (
+            <div className="p-8 text-center">
+              <p className="text-muted-foreground">{error}</p>
+              <Button variant="outline" className="mt-4" asChild><Link href="/">Voltar</Link></Button>
             </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon"><Bell className="w-5 h-5" /></Button>
-              <Button variant="ghost" size="icon" asChild><Link href="/configuracoes"><Settings className="w-5 h-5" /></Link></Button>
-            </div>
-          </div>
-        </header>
-
-        <main className="pb-8">
-          <div className="max-w-3xl mx-auto">
-            {isLoading ? <ProfileSkeleton /> : error ? (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">{error}</p>
-                <Button variant="outline" className="mt-4" asChild><Link href="/">Voltar</Link></Button>
-              </div>
-            ) : profile ? (
-              <>
-                <div className="relative">
-                  <div className="h-32 sm:h-40 bg-gradient-to-br from-primary/20 via-primary/10 to-background" />
-                  <div className="px-4 sm:px-6">
-                    <div className="-mt-12 sm:-mt-14 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                      <div className="flex items-end gap-4">
-                        <Avatar className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-background shadow-lg">
-                          <AvatarImage src={profile.profile_picture_url ?? undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground text-2xl font-bold">{getInitials(profile.name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="pb-1 sm:pb-2">
-                          <div className="flex items-center gap-2">
-                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{profile.name}</h1>
-                            {profile.is_artist && <Badge variant="secondary" className="gap-1"><Music className="w-3 h-3" />Artista</Badge>}
-                          </div>
-                          <p className="text-sm text-muted-foreground">Membro desde {formatDate(profile.created_at)}</p>
+          ) : profile ? (
+            <>
+              <div className="relative">
+                <div className="h-32 sm:h-40 bg-gradient-to-br from-primary/20 via-primary/10 to-background" />
+                <div className="px-4 sm:px-6">
+                  <div className="-mt-12 sm:-mt-14 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                    <div className="flex items-end gap-4">
+                      <Avatar className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-background shadow-lg">
+                        <AvatarImage src={profile.profile_picture_url ?? undefined} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground text-2xl font-bold">{getInitials(profile.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="pb-1 sm:pb-2">
+                        <div className="flex items-center gap-2">
+                          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{profile.name}</h1>
+                          {profile.is_artist && <Badge variant="secondary" className="gap-1"><Music className="w-3 h-3" />Artista</Badge>}
                         </div>
-                      </div>
-                      <div className="flex gap-2 sm:pb-2">
-                        {isOwner ? (
-                          <Button variant="outline" asChild><Link href="/configuracoes">Editar perfil</Link></Button>
-                        ) : (
-                          <><Button>Seguir</Button><Button variant="outline" size="icon"><Share2 className="w-4 h-4" /></Button></>
-                        )}
+                        <p className="text-sm text-muted-foreground">Membro desde {formatDate(profile.created_at)}</p>
                       </div>
                     </div>
-                    {profile.bio && <p className="mt-4 text-sm sm:text-base leading-relaxed max-w-xl">{profile.bio}</p>}
-                    {socialLinks.website && (
-                      <a href={socialLinks.website} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                        <LinkIcon className="w-4 h-4" />{socialLinks.website.replace(/https?:\/\//, '').replace(/\/$/, '')}
-                      </a>
-                    )}
-                    <div className="mt-6 flex items-center justify-around py-4 border-y bg-muted/30 rounded-lg">
-                      <StatItem value={profile.stats.followersCount} label="Seguidores" />
-                      <div className="w-px h-8 bg-border" />
-                      <StatItem value={profile.stats.followingCount} label="Seguindo" />
-                      <div className="w-px h-8 bg-border" />
-                      <StatItem value={profile.stats.postsCount} label="Recomendacoes" />
+                    <div className="flex gap-2 sm:pb-2">
+                      {isOwner ? (
+                        <Button variant="outline" asChild><Link href="/configuracoes">Editar perfil</Link></Button>
+                      ) : (
+                        <><Button>Seguir</Button><Button variant="outline" size="icon"><Share2 className="w-4 h-4" /></Button></>
+                      )}
                     </div>
                   </div>
+                  {profile.bio && <p className="mt-4 text-sm sm:text-base leading-relaxed max-w-xl">{profile.bio}</p>}
+                  {socialLinks.website && (
+                    <a href={socialLinks.website} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                      <LinkIcon className="w-4 h-4" />{socialLinks.website.replace(/https?:\/\//, '').replace(/\/$/, '')}
+                    </a>
+                  )}
+                  <div className="mt-6 flex items-center justify-around py-4 border-y bg-muted/30 rounded-lg">
+                    <StatItem value={profile.stats.followersCount} label="Seguidores" />
+                    <div className="w-px h-8 bg-border" />
+                    <StatItem value={profile.stats.followingCount} label="Seguindo" />
+                    <div className="w-px h-8 bg-border" />
+                    <StatItem value={profile.stats.postsCount} label="Recomendacoes" />
+                  </div>
                 </div>
+              </div>
 
-                <div className="mt-6 px-4 sm:px-6">
-                  <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-                      <TabsTrigger value="recomendacoes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3">Recomendacoes</TabsTrigger>
-                      {isOwner && (
-                        <TabsTrigger value="curtidas" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3">
-                          Curtidas
-                          {favorites.length > 0 && (
-                            <span className="ml-1.5 text-xs text-muted-foreground">({favorites.length})</span>
-                          )}
-                        </TabsTrigger>
-                      )}
-                    </TabsList>
+              <div className="mt-6 px-4 sm:px-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+                    <TabsTrigger value="recomendacoes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3">Recomendacoes</TabsTrigger>
+                    {isOwner && (
+                      <TabsTrigger value="curtidas" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3">
+                        Curtidas
+                        {favorites.length > 0 && (
+                          <span className="ml-1.5 text-xs text-muted-foreground">({favorites.length})</span>
+                        )}
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
 
-                    <TabsContent value="recomendacoes" className="mt-6">
-                      {loadingRecs ? (
-                        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                      ) : recommendations.length === 0 ? (
-                        <EmptyState
-                          icon={<Music className="w-8 h-8" />}
-                          title="Nenhuma recomendacao ainda"
-                          description={isOwner ? 'Compartilhe musicas que voce ama com a comunidade' : `${profile.name} ainda nao fez recomendacoes`}
-                          action={isOwner && <Button asChild><Link href="/nova-recomendacao">Fazer recomendacao</Link></Button>}
-                        />
-                      ) : (
-                        <div className="space-y-4">
-                          {recommendations.map((rec) => (
-                            <RecommendationCard 
-                              key={rec.id} 
-                              rec={rec} 
-                              onVote={handleVote} 
-                              onCommentsChange={handleCommentsChange}
-                              onFavoriteToggle={handleFavoriteToggle} 
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </TabsContent>
+                  <TabsContent value="recomendacoes" className="mt-6">
+                    {loadingRecs ? (
+                      <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                    ) : recommendations.length === 0 ? (
+                      <EmptyState
+                        icon={<Music className="w-8 h-8" />}
+                        title="Nenhuma recomendacao ainda"
+                        description={isOwner ? 'Compartilhe musicas que voce ama com a comunidade' : `${profile.name} ainda nao fez recomendacoes`}
+                        action={isOwner && <Button asChild><Link href="/nova-recomendacao">Fazer recomendacao</Link></Button>}
+                      />
+                    ) : (
+                      <div className="space-y-4">
+                        {recommendations.map((rec) => (
+                          <RecommendationCard
+                            key={rec.id}
+                            rec={rec}
+                            onVote={handleVote}
+                            onCommentsChange={handleCommentsChange}
+                            onFavoriteToggle={handleFavoriteToggle}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
 
-                    <TabsContent value="curtidas" className="mt-6">
-                      {loadingFavorites ? (
-                        <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : favorites.length === 0 ? (
-                        <EmptyState 
-                          icon={<Heart className="w-8 h-8" />} 
-                          title="Nenhuma curtida ainda" 
-                          description="Curta musicas no feed para salva-las aqui"
-                          action={<Button asChild><Link href="/dashboard">Explorar feed</Link></Button>}
-                        />
-                      ) : (
-                        <div className="space-y-3">
-                          {favorites.map((favorite) => (
-                            <FavoriteCard
-                              key={favorite.id}
-                              favorite={favorite}
-                              onRemove={handleRemoveFavorite}
-                              isRemoving={removingFavoriteId === favorite.song.id}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </main>
-      </div>
+                  <TabsContent value="curtidas" className="mt-6">
+                    {loadingFavorites ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : favorites.length === 0 ? (
+                      <EmptyState
+                        icon={<Heart className="w-8 h-8" />}
+                        title="Nenhuma curtida ainda"
+                        description="Curta musicas no feed para salva-las aqui"
+                        action={<Button asChild><Link href="/dashboard">Explorar feed</Link></Button>}
+                      />
+                    ) : (
+                      <div className="space-y-3">
+                        {favorites.map((favorite) => (
+                          <FavoriteCard
+                            key={favorite.id}
+                            favorite={favorite}
+                            onRemove={handleRemoveFavorite}
+                            isRemoving={removingFavoriteId === favorite.song.id}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </main>
     </div>
   )
 }

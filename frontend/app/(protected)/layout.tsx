@@ -1,8 +1,11 @@
 'use client'
 
+import { Header } from '@/components/header'
+import { SidebarContent } from '@/components/sidebar'
 import { useAuth } from '@/lib/auth-context'
 import { Loader2 } from 'lucide-react'
 
+// Tela de carregamento simples
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -21,13 +24,33 @@ export default function ProtectedLayout({
 }) {
   const { isLoading, isAuthenticated } = useAuth()
 
-  if (isLoading) {
-    return <LoadingScreen />
-  }
+  // Se estiver carregando, mostra spinner
+  if (isLoading) return <LoadingScreen />
 
-  if (!isAuthenticated) {
-    return <LoadingScreen />
-  }
+  // Se não estiver logado, redireciona (ou mostra loading enquanto o middleware age)
+  // Nota: Idealmente o redirecionamento acontece no Middleware ou no useEffect
+  if (!isAuthenticated) return <LoadingScreen />
 
-  return <>{children}</>
+  return (
+    <div className="min-h-screen bg-background">
+      
+      {/* Sidebar Desktop Fixa */}
+      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 lg:border-r lg:bg-card z-50">
+        <SidebarContent />
+      </aside>
+
+      {/* Wrapper do Conteúdo (Empurrado para a direita no desktop) */}
+      <div className="lg:pl-64 flex flex-col min-h-screen">
+        
+        {/* Header Global */}
+        <Header />
+
+        {/* Conteúdo da Página */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+          {children}
+        </main>
+        
+      </div>
+    </div>
+  )
 }
