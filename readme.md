@@ -98,5 +98,5 @@ Acesse a documentação completa em: http://localhost:3333/swagger
 
 ---
 
-## 🖼 Screenshots e Vídeo
-[TODO: Adicionar aqui os links das 8 screenshots e o link do vídeo demonstrativo conforme solicitado pela Alana.]
+## Vídeo
+https://www.dropbox.com/scl/fi/h7s7bzo8704spej8bknio/2025-12-18-17-15-36.mkv?rlkey=jbzzhhx38l5zs8bcqvuw9eoc6&st=ft6hn2i9&dl=0
