@@ -5,6 +5,9 @@ import { cors } from "@elysiajs/cors";
 import { betterAuth } from "./core/auth/macro";
 import { recommendationRoutes } from "./nova-recomendacao/controller";
 import { userRoutes } from "./modules/perfil";
+import { commentRoutes } from "./modules/comments";
+import { favoriteRoutes } from "./modules/favourites";
+import { followRoutes } from "./modules/followers";
 
 const _server = new Elysia()
   .use(
@@ -26,8 +29,11 @@ const _server = new Elysia()
   .group("/v1", (app) =>
     app
       .use(betterAuth)
-      .use(userRoutes) 
+      .use(userRoutes)
+      .use(commentRoutes)
       .use(recommendationRoutes)
+      .use(favoriteRoutes)
+      .use(followRoutes)
       .get("/", "hi\n")
       .get("/user", ({ user }) => user, {
         auth: true,

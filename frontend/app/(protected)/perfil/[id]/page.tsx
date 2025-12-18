@@ -12,9 +12,9 @@ import {
   Share2,
   ThumbsUp,
   ThumbsDown,
-  MessageCircle,
   Play,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -27,7 +27,9 @@ import { SidebarContent } from '@/components/sidebar'
 import { useAuth } from '@/lib/auth-context'
 import { useProfile } from '@/hooks/use-profile'
 import { getRecommendations, voteRecommendation, type Recommendation } from '@/lib/api/recommendations'
+import { getFavorites, toggleFavorite, type FavoriteSong } from '@/lib/api/favourites'
 import { cn } from '@/lib/utils'
+import { CommentsDrawer } from '@/components/comments-drawer'
 
 function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -84,7 +86,25 @@ function StatItem({ value, label }: { value: number; label: string }) {
   )
 }
 
-function RecommendationCard({ rec, onVote }: { rec: Recommendation; onVote: (id: number, type: 'up' | 'down') => void }) {
+function RecommendationCard({
+  rec,
+  onVote,
+  onCommentsChange,
+  onFavoriteToggle,
+}: {
+  rec: Recommendation
+  onVote: (id: number, type: 'up' | 'down') => void
+  onCommentsChange: (id: number, delta: number) => void
+  onFavoriteToggle: (id: number, songId: number) => void
+}) {
+  const [favoriteLoading, setFavoriteLoading] = useState(false)
+
+  const handleFavorite = async () => {
+    setFavoriteLoading(true)
+    await onFavoriteToggle(rec.id, rec.music.id)
+    setFavoriteLoading(false)
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -114,17 +134,51 @@ function RecommendationCard({ rec, onVote }: { rec: Recommendation; onVote: (id:
         </div>
       </CardContent>
       <CardFooter className="border-t pt-2">
-        <div className="flex items-center gap-2 w-full">
-          <Button variant="ghost" size="sm" className={cn('gap-1.5 h-8', rec.userVote === 'up' && 'text-emerald-500')} onClick={() => onVote(rec.id, 'up')}>
-            <ThumbsUp className="w-3.5 h-3.5" />{rec.stats.upvotes}
+        <div className="flex items-center gap-1 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('gap-1.5 h-8', rec.userVote === 'up' && 'text-emerald-500')}
+            onClick={() => onVote(rec.id, 'up')}
+          >
+            <ThumbsUp className="w-3.5 h-3.5" />
+            <span className="tabular-nums">{rec.stats.upvotes}</span>
           </Button>
-          <Button variant="ghost" size="sm" className={cn('gap-1.5 h-8', rec.userVote === 'down' && 'text-red-500')} onClick={() => onVote(rec.id, 'down')}>
-            <ThumbsDown className="w-3.5 h-3.5" />{rec.stats.downvotes}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('gap-1.5 h-8', rec.userVote === 'down' && 'text-red-500')}
+            onClick={() => onVote(rec.id, 'down')}
+          >
+            <ThumbsDown className="w-3.5 h-3.5" />
+            <span className="tabular-nums">{rec.stats.downvotes}</span>
           </Button>
-          <Button variant="ghost" size="sm" className="gap-1.5 h-8">
-            <MessageCircle className="w-3.5 h-3.5" />{rec.stats.comments}
-          </Button>
+
+          <CommentsDrawer
+            postId={rec.id}
+            commentsCount={rec.stats.comments}
+            onCountChange={(delta) => onCommentsChange(rec.id, delta)}
+          />
+
           <div className="flex-1" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-8 w-8",
+              rec.isFavorite && "text-red-500 hover:text-red-600"
+            )}
+            onClick={handleFavorite}
+            disabled={favoriteLoading}
+          >
+            {favoriteLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Heart className={cn("w-3.5 h-3.5", rec.isFavorite && "fill-current")} />
+            )}
+          </Button>
+
           {rec.music.link && (
             <Button variant="ghost" size="sm" className="h-8" asChild>
               <a href={rec.music.link} target="_blank" rel="noopener noreferrer">
@@ -134,6 +188,74 @@ function RecommendationCard({ rec, onVote }: { rec: Recommendation; onVote: (id:
           )}
         </div>
       </CardFooter>
+    </Card>
+  )
+}
+
+function FavoriteCard({
+  favorite,
+  onRemove,
+  isRemoving,
+}: {
+  favorite: FavoriteSong
+  onRemove: (songId: number) => void
+  isRemoving: boolean
+}) {
+  return (
+    <Card className="group">
+      <CardContent className="p-4">
+        <div className="flex gap-4">
+          <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
+            {favorite.song.coverUrl ? (
+              <img
+                src={favorite.song.coverUrl}
+                alt={favorite.song.title}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            ) : (
+              <Music className="w-6 h-6 text-primary/60" />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold truncate">{favorite.song.title}</h3>
+            <Link
+              href={`/perfil/${favorite.song.artist.id}`}
+              className="text-sm text-muted-foreground hover:underline truncate block"
+            >
+              {favorite.song.artist.name}
+            </Link>
+            {favorite.song.genre && (
+              <Badge variant="secondary" className="text-xs mt-1">
+                {favorite.song.genre}
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {favorite.song.url && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <a href={favorite.song.url} target="_blank" rel="noopener noreferrer">
+                  <Play className="w-4 h-4" />
+                </a>
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => onRemove(favorite.song.id)}
+              disabled={isRemoving}
+            >
+              {isRemoving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
     </Card>
   )
 }
@@ -151,11 +273,17 @@ function EmptyState({ icon, title, description, action }: { icon: React.ReactNod
 
 export default function PerfilPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
-  const { user: currentUser } = useAuth()
+  const { isAuthenticated, user: currentUser } = useAuth()
   const { profile, isLoading, error } = useProfile(resolvedParams.id)
   const [activeTab, setActiveTab] = useState('recomendacoes')
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loadingRecs, setLoadingRecs] = useState(true)
+  
+  // favorites state
+  const [favorites, setFavorites] = useState<FavoriteSong[]>([])
+  const [loadingFavorites, setLoadingFavorites] = useState(false)
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false)
+  const [removingFavoriteId, setRemovingFavoriteId] = useState<number | null>(null)
 
   const socialLinks = profile ? parseSocialLinks(profile.social_links) : {}
   const isOwner = currentUser !== null && profile?.id === currentUser.id
@@ -175,6 +303,66 @@ export default function PerfilPage({ params }: { params: Promise<{ id: string }>
     }
     loadRecs()
   }, [profile?.id])
+
+  // load favorites when tab changes to "curtidas" (only for owner)
+  useEffect(() => {
+    async function loadFavorites() {
+      if (activeTab !== 'curtidas' || !isOwner || favoritesLoaded) return
+      
+      setLoadingFavorites(true)
+      try {
+        const response = await getFavorites(50, 0)
+        if (response.success && response.data) {
+          setFavorites(response.data.favorites)
+        }
+      } catch (err) {
+        console.error('Failed to load favorites:', err)
+      } finally {
+        setLoadingFavorites(false)
+        setFavoritesLoaded(true)
+      }
+    }
+    loadFavorites()
+  }, [activeTab, isOwner, favoritesLoaded])
+
+  const handleCommentsChange = (id: number, delta: number) => {
+    setRecommendations(prev => prev.map(rec => {
+      if (rec.id !== id) return rec
+      return {
+        ...rec,
+        stats: {
+          ...rec.stats,
+          comments: rec.stats.comments + delta
+        }
+      }
+    }))
+  }
+
+  const handleFavoriteToggle = async (recId: number, songId: number) => {
+    if (!isAuthenticated) return
+
+    const response = await toggleFavorite(songId)
+    if (response.success && response.data) {
+      setRecommendations((prev) =>
+        prev.map((rec) => {
+          if (rec.id !== recId) return rec
+          return { ...rec, isFavorite: response.data!.isFavorite }
+        })
+      )
+    }
+  }
+
+  const handleRemoveFavorite = async (songId: number) => {
+    setRemovingFavoriteId(songId)
+    try {
+      const response = await toggleFavorite(songId)
+      if (response.success && !response.data?.isFavorite) {
+        setFavorites((prev) => prev.filter((f) => f.song.id !== songId))
+      }
+    } finally {
+      setRemovingFavoriteId(null)
+    }
+  }
 
   const handleVote = async (id: number, voteType: 'up' | 'down') => {
     setRecommendations(prev => prev.map(rec => {
@@ -269,7 +457,14 @@ export default function PerfilPage({ params }: { params: Promise<{ id: string }>
                   <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
                       <TabsTrigger value="recomendacoes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3">Recomendacoes</TabsTrigger>
-                      <TabsTrigger value="curtidas" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3">Curtidas</TabsTrigger>
+                      {isOwner && (
+                        <TabsTrigger value="curtidas" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-3">
+                          Curtidas
+                          {favorites.length > 0 && (
+                            <span className="ml-1.5 text-xs text-muted-foreground">({favorites.length})</span>
+                          )}
+                        </TabsTrigger>
+                      )}
                     </TabsList>
 
                     <TabsContent value="recomendacoes" className="mt-6">
@@ -284,13 +479,43 @@ export default function PerfilPage({ params }: { params: Promise<{ id: string }>
                         />
                       ) : (
                         <div className="space-y-4">
-                          {recommendations.map((rec) => <RecommendationCard key={rec.id} rec={rec} onVote={handleVote} />)}
+                          {recommendations.map((rec) => (
+                            <RecommendationCard 
+                              key={rec.id} 
+                              rec={rec} 
+                              onVote={handleVote} 
+                              onCommentsChange={handleCommentsChange}
+                              onFavoriteToggle={handleFavoriteToggle} 
+                            />
+                          ))}
                         </div>
                       )}
                     </TabsContent>
 
                     <TabsContent value="curtidas" className="mt-6">
-                      <EmptyState icon={<Heart className="w-8 h-8" />} title="Nenhuma curtida ainda" description={isOwner ? 'Curta recomendacoes para salva-las aqui' : `${profile.name} ainda nao curtiu nenhuma recomendacao`} />
+                      {loadingFavorites ? (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : favorites.length === 0 ? (
+                        <EmptyState 
+                          icon={<Heart className="w-8 h-8" />} 
+                          title="Nenhuma curtida ainda" 
+                          description="Curta musicas no feed para salva-las aqui"
+                          action={<Button asChild><Link href="/dashboard">Explorar feed</Link></Button>}
+                        />
+                      ) : (
+                        <div className="space-y-3">
+                          {favorites.map((favorite) => (
+                            <FavoriteCard
+                              key={favorite.id}
+                              favorite={favorite}
+                              onRemove={handleRemoveFavorite}
+                              isRemoving={removingFavoriteId === favorite.song.id}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </TabsContent>
                   </Tabs>
                 </div>

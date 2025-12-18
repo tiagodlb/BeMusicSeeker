@@ -31,8 +31,9 @@ export interface Recommendation {
     downvotes: number
     comments: number
   }
-  userVote?: 'up' | 'down' | null
   createdAt: string
+  userVote?: 'up' | 'down' | null
+  isFavorite?: boolean
 }
 
 export interface RecommendationResponse {

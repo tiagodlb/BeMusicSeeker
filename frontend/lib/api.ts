@@ -1,4 +1,5 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+console.log('[API] API_BASE_URL:', API_BASE_URL)
 
 type ApiError = {
   message: string;
@@ -16,6 +17,7 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE_URL}${endpoint}`;
+  console.log('[API] request:', options.method || 'GET', url)
 
   const config: RequestInit = {
     ...options,
@@ -28,7 +30,9 @@ async function request<T>(
 
   try {
     const response = await fetch(url, config);
+    console.log('[API] response status:', response.status)
     const data = await response.json();
+    console.log('[API] response data:', data)
 
     if (!response.ok) {
       return {
@@ -43,6 +47,7 @@ async function request<T>(
 
     return { data, error: null };
   } catch (err) {
+    console.error('[API] fetch error:', err)
     return {
       data: null,
       error: {

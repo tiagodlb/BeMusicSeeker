@@ -10,7 +10,6 @@ import {
   Play,
   ThumbsUp,
   ThumbsDown,
-  MessageCircle,
   Share2,
   Menu,
   Search,
@@ -46,6 +45,9 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { SidebarContent } from '@/components/sidebar'
 import { getRecommendations } from '@/lib/api/recommendations'
+import { checkFavorites, toggleFavorite } from '@/lib/api/favourites'
+import { CommentsDrawer } from '@/components/comments-drawer'
+import { useAuth } from '@/lib/auth-context'
 
 interface Recommendation {
   id: number
@@ -71,6 +73,7 @@ interface Recommendation {
   }
   createdAt: string
   userVote?: 'up' | 'down' | null
+  isFavorite?: boolean
 }
 
 function getInitials(name: string): string {
@@ -111,7 +114,6 @@ function getSoundCloudEmbedUrl(url: string): string {
 }
 
 function getSpotifyEmbedUrl(url: string): string | null {
-  // https://open.spotify.com/track/XXX -> https://open.spotify.com/embed/track/XXX
   const match = url.match(/spotify\.com\/(track|album|playlist)\/([a-zA-Z0-9]+)/)
   if (match) {
     return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`
@@ -231,7 +233,6 @@ function MusicPlayer({ url, title }: { url: string; title: string }) {
     }
   }
 
-  // fallback: external link
   return (
     <Button 
       variant="outline" 
@@ -249,11 +250,23 @@ function MusicPlayer({ url, title }: { url: string; title: string }) {
 
 function RecommendationCard({ 
   data, 
-  onVote 
+  onVote,
+  onCommentsChange,
+  onFavoriteToggle,
 }: { 
   data: Recommendation
-  onVote: (id: number, type: 'up' | 'down') => void 
+  onVote: (id: number, type: 'up' | 'down') => void
+  onCommentsChange: (id: number, delta: number) => void
+  onFavoriteToggle: (id: number, songId: number) => void
 }) {
+  const [favoriteLoading, setFavoriteLoading] = useState(false)
+
+  const handleFavorite = async () => {
+    setFavoriteLoading(true)
+    await onFavoriteToggle(data.id, data.music.id)
+    setFavoriteLoading(false)
+  }
+
   return (
     <Card>
       <CardHeader className="pb-0">
@@ -330,36 +343,50 @@ function RecommendationCard({
       </CardContent>
 
       <CardFooter className="border-t pt-3">
-        <div className="flex items-center gap-2 w-full">
+        <div className="flex items-center gap-1 w-full">
           <Button 
             variant="ghost" 
             size="sm" 
-            className={cn('gap-2', data.userVote === 'up' && 'text-emerald-500')}
+            className={cn('gap-1.5', data.userVote === 'up' && 'text-emerald-500')}
             onClick={() => onVote(data.id, 'up')}
           >
             <ThumbsUp className="w-4 h-4" />
-            {data.stats.upvotes}
+            <span className="tabular-nums">{data.stats.upvotes}</span>
           </Button>
           
           <Button 
             variant="ghost" 
             size="sm" 
-            className={cn('gap-2', data.userVote === 'down' && 'text-red-500')}
+            className={cn('gap-1.5', data.userVote === 'down' && 'text-red-500')}
             onClick={() => onVote(data.id, 'down')}
           >
             <ThumbsDown className="w-4 h-4" />
-            {data.stats.downvotes}
+            <span className="tabular-nums">{data.stats.downvotes}</span>
           </Button>
           
-          <Button variant="ghost" size="sm" className="gap-2">
-            <MessageCircle className="w-4 h-4" />
-            {data.stats.comments}
-          </Button>
+          <CommentsDrawer 
+            postId={data.id} 
+            commentsCount={data.stats.comments}
+            onCountChange={(delta) => onCommentsChange(data.id, delta)}
+          />
 
           <div className="flex-1" />
 
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Heart className="w-4 h-4" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn(
+              "h-8 w-8 transition-colors",
+              data.isFavorite && "text-red-500 hover:text-red-600"
+            )}
+            onClick={handleFavorite}
+            disabled={favoriteLoading}
+          >
+            {favoriteLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Heart className={cn("w-4 h-4", data.isFavorite && "fill-current")} />
+            )}
           </Button>
 
           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -425,6 +452,7 @@ function LoadingSkeleton() {
 }
 
 export default function DashboardPage() {
+  const { isAuthenticated } = useAuth()
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [viewMode, setViewMode] = useState('list')
   const [isLoading, setIsLoading] = useState(true)
@@ -437,6 +465,21 @@ export default function DashboardPage() {
         const response = await getRecommendations(20, 0)
         if (response.success && response.data) {
           setRecommendations(response.data)
+
+          // load favorite status if authenticated
+          if (isAuthenticated && response.data.length > 0) {
+            const songIds = response.data.map((r) => r.music.id)
+            const favResponse = await checkFavorites(songIds)
+            if (favResponse.success && favResponse.data) {
+              const savedSet = new Set(favResponse.data.savedIds)
+              setRecommendations((prev) =>
+                prev.map((rec) => ({
+                  ...rec,
+                  isFavorite: savedSet.has(rec.music.id),
+                }))
+              )
+            }
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar')
@@ -446,7 +489,7 @@ export default function DashboardPage() {
     }
 
     loadRecommendations()
-  }, [])
+  }, [isAuthenticated])
 
   const handleVote = (id: number, voteType: 'up' | 'down') => {
     setRecommendations(prev => prev.map(rec => {
@@ -481,6 +524,33 @@ export default function DashboardPage() {
     }))
 
     // TODO: call API to persist vote
+  }
+
+  const handleCommentsChange = (id: number, delta: number) => {
+    setRecommendations(prev => prev.map(rec => {
+      if (rec.id !== id) return rec
+      return {
+        ...rec,
+        stats: {
+          ...rec.stats,
+          comments: rec.stats.comments + delta
+        }
+      }
+    }))
+  }
+
+  const handleFavoriteToggle = async (recId: number, songId: number) => {
+    if (!isAuthenticated) return
+
+    const response = await toggleFavorite(songId)
+    if (response.success && response.data) {
+      setRecommendations((prev) =>
+        prev.map((rec) => {
+          if (rec.id !== recId) return rec
+          return { ...rec, isFavorite: response.data!.isFavorite }
+        })
+      )
+    }
   }
 
   return (
@@ -583,6 +653,8 @@ export default function DashboardPage() {
                   key={rec.id} 
                   data={rec} 
                   onVote={handleVote}
+                  onCommentsChange={handleCommentsChange}
+                  onFavoriteToggle={handleFavoriteToggle}
                 />
               ))
             )}
