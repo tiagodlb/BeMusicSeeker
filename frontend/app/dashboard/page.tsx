@@ -3,18 +3,6 @@
 import { SetStateAction, useState } from 'react'
 import Link from 'next/link'
 import { 
-  Home, 
-  Zap, 
-  BarChart3, 
-  Compass, 
-  Heart, 
-  Users, 
-  Plus, 
-  ChevronDown,
-  Menu,
-  Search,
-  Bell,
-  Settings,
   LayoutList,
   LayoutGrid,
   Music,
@@ -25,7 +13,12 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageCircle,
-  Share2
+  Share2,
+  Menu,
+  Search,
+  Bell,
+  Settings,
+  Heart,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -50,8 +43,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Sidebar, SidebarContent } from '@/components/sidebar'
 
 interface Recommendation {
   id: string
@@ -134,115 +127,6 @@ const mockRecommendations: Recommendation[] = [
     userVote: null
   }
 ]
-
-const navItems = [
-  { href: '/dashboard', label: 'Início', icon: Home, active: true },
-  { href: '/trending', label: 'Em Alta', icon: Zap },
-  { href: '/rankings', label: 'Rankings', icon: BarChart3 },
-  { href: '/explorar', label: 'Explorar Gêneros', icon: Compass },
-]
-
-const libraryItems = [
-  { href: '/favoritos', label: 'Meus Favoritos', icon: Heart },
-  { href: '/seguindo', label: 'Seguindo', icon: Users },
-]
-
-function SidebarContent() {
-  return (
-    <>
-      <div className="p-6 border-b border-border">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-linear-to-br from-primary to-purple-600 flex items-center justify-center">
-            <Music className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <span className="font-semibold text-lg">BeMusicShare</span>
-        </Link>
-      </div>
-
-      <nav className="flex-1 p-4">
-        <div className="mb-6">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-2">
-            Menu
-          </p>
-          <ul className="space-y-1">
-            {navItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    item.active 
-                      ? "bg-primary/10 text-primary" 
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  )}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mb-6">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-2">
-            Biblioteca
-          </p>
-          <ul className="space-y-1">
-            {libraryItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </nav>
-
-      <div className="p-4">
-        <Button asChild className="w-full">
-          <Link href="/nova-recomendacao">
-            <Plus className="w-4 h-4 mr-2" />
-            Criar Recomendação
-          </Link>
-        </Button>
-      </div>
-
-      <Separator />
-
-      <div className="p-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-2">
-              <Avatar className="w-9 h-9">
-                <AvatarImage src="" />
-                <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-sm">
-                  TS
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-medium">Tiago Silva</p>
-                <p className="text-xs text-muted-foreground">Curador</p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Configurações</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Sair</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </>
-  )
-}
 
 function RecommendationCard({ 
   data, 
@@ -449,17 +333,11 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 lg:border-r lg:bg-card">
-        <SidebarContent />
-      </aside>
+      <Sidebar />
 
-      {/* Main Content */}
       <div className="lg:pl-64">
-        {/* Header */}
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
           <div className="flex h-16 items-center justify-around gap-6 px-4 sm:px-6 lg:px-8">
-            {/* Mobile Menu */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden">
@@ -471,7 +349,6 @@ export default function DashboardPage() {
               </SheetContent>
             </Sheet>
 
-            {/* Search */}
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -495,9 +372,7 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Content */}
         <main className="p-4 sm:p-6 lg:p-8">
-          {/* Welcome */}
           <section className="mb-8">
             <h1 className="text-2xl font-bold tracking-tight">
               Bem-vindo de volta, <span className="text-primary">Tiago</span>
@@ -507,7 +382,6 @@ export default function DashboardPage() {
             </p>
           </section>
 
-          {/* Filters */}
           <section className="flex flex-wrap items-center gap-4 mb-6">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-muted-foreground uppercase">Período</span>
@@ -536,7 +410,6 @@ export default function DashboardPage() {
             </ToggleGroup>
           </section>
 
-          {/* Feed */}
           <section className="space-y-6">
             {recommendations.map((rec) => (
               <RecommendationCard 
