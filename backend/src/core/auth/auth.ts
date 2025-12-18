@@ -13,6 +13,7 @@ const dialect = new PostgresDialect({
     // max: 10,
     connectionString: process.env.DATABASE_URL,
     ssl: false, 
+    
   }),
 });
 
@@ -24,6 +25,31 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+  sendResetPassword: async ({ user, url }) => {
+      // TODO: integrar com serviço de email (resend, nodemailer, etc)
+      // por enquanto, loga no console para desenvolvimento
+      console.log(`
+========================================
+RESET PASSWORD REQUEST
+========================================
+User: ${user.email}
+Reset URL: ${url}
+========================================
+      `);
+      
+      // Exemplo com Resend:
+      // await resend.emails.send({
+      //   from: 'BeMusicShare <noreply@bemusicshare.com>',
+      //   to: user.email,
+      //   subject: 'Recuperar sua senha - BeMusicShare',
+      //   html: `
+      //     <h1>Recuperação de Senha</h1>
+      //     <p>Você solicitou a recuperação de senha.</p>
+      //     <a href="${url}">Clique aqui para redefinir sua senha</a>
+      //     <p>Este link expira em 1 hora.</p>
+      //   `
+      // });
+    },
   },
 });
 
