@@ -99,4 +99,4 @@ Acesse a documentação completa em: http://localhost:3333/swagger
 ---
 
 ## Vídeo
-https://www.dropbox.com/scl/fi/h7s7bzo8704spej8bknio/2025-12-18-17-15-36.mkv?rlkey=jbzzhhx38l5zs8bcqvuw9eoc6&st=ft6hn2i9&dl=0
+youtube.com/watch?v=mxkmVmHT7pE&feature=youtu.be
