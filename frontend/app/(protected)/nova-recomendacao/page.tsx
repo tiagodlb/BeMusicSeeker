@@ -1,496 +1,141 @@
 'use client'
 
-import { SetStateAction, useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  LayoutList,
-  LayoutGrid,
-  Music,
-  MoreHorizontal,
-  Play,
-  ThumbsUp,
-  ThumbsDown,
-  MessageCircle,
-  Share2,
-  Menu,
-  Search,
-  Bell,
-  Settings,
-  Heart,
-  Loader2,
-  Plus,
-  ExternalLink,
-} from 'lucide-react'
-
-import { cn } from '@/lib/utils'
+import { Menu, Search, Bell, Settings, Plus, Music, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { SidebarContent } from '@/components/sidebar'
-import { getRecommendations, voteRecommendation } from '@/lib/api/recommendations'
+import { createRecommendation } from '@/lib/api/recommendations'
 
-interface Recommendation {
-  id: number
-  user: {
-    id: number
-    name: string
-    avatar: string | null
-  }
-  music: {
-    id: number
-    title: string
-    artist: string
-    genre: string
-    coverUrl: string | null
-    link: string
-  }
+const GENRES = [
+  'Pop', 'Rock', 'Hip Hop', 'R&B', 'Eletronica', 'Jazz', 
+  'Blues', 'Country', 'Reggae', 'MPB', 'Sertanejo', 'Funk',
+  'Indie', 'Metal', 'Classica', 'Folk', 'Soul', 'Outro'
+]
+
+const AVAILABLE_TAGS = [
+  'Relaxante', 'Animado', 'Melancolico', 'Romantico', 'Festa',
+  'Treino', 'Foco', 'Acustico', 'Instrumental', 'Vocal',
+  'Descoberta', 'Classico', 'Underground', 'Mainstream', 'Brasileiro'
+]
+
+interface FormData {
+  title: string
+  artist: string
+  genre: string
   description: string
   tags: string[]
-  stats: {
-    upvotes: number
-    downvotes: number
-    comments: number
-  }
-  createdAt: string
-  userVote?: 'up' | 'down' | null
+  mediaUrl: string
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+interface FormErrors {
+  title?: string
+  artist?: string
+  genre?: string
+  description?: string
+  tags?: string
+  api?: string
 }
 
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+export default function NovaRecomendacaoPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [formData, setFormData] = useState<FormData>({
+    title: '',
+    artist: '',
+    genre: '',
+    description: '',
+    tags: [],
+    mediaUrl: '',
+  })
 
-  if (diffMins < 1) return 'Agora'
-  if (diffMins < 60) return `${diffMins} min atrás`
-  if (diffHours < 24) return `${diffHours}h atrás`
-  if (diffDays < 7) return `${diffDays}d atrás`
-  return date.toLocaleDateString('pt-BR')
-}
-
-function getPlayerType(url: string): 'soundcloud' | 'spotify' | 'youtube' | 'external' | null {
-  if (!url) return null
-  if (url.includes('soundcloud.com')) return 'soundcloud'
-  if (url.includes('spotify.com')) return 'spotify'
-  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
-  if (url.startsWith('http')) return 'external'
-  return null
-}
-
-function getSoundCloudEmbedUrl(url: string): string {
-  return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false`
-}
-
-function getSpotifyEmbedUrl(url: string): string | null {
-  // https://open.spotify.com/track/XXX -> https://open.spotify.com/embed/track/XXX
-  const match = url.match(/spotify\.com\/(track|album|playlist)\/([a-zA-Z0-9]+)/)
-  if (match) {
-    return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`
-  }
-  return null
-}
-
-function getYouTubeEmbedUrl(url: string): string | null {
-  let videoId: string | null = null
-  if (url.includes('youtu.be/')) {
-    videoId = url.split('youtu.be/')[1]?.split('?')[0]
-  } else if (url.includes('v=')) {
-    videoId = url.split('v=')[1]?.split('&')[0]
-  }
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : null
-}
-
-function MusicPlayer({ url, title }: { url: string; title: string }) {
-  const playerType = getPlayerType(url)
-  const [showEmbed, setShowEmbed] = useState(false)
-
-  if (!playerType) {
-    return (
-      <div className="text-sm text-muted-foreground italic">
-        Sem link de audio
-      </div>
-    )
-  }
-
-  if (playerType === 'soundcloud') {
-    return (
-      <div className="space-y-2">
-        {showEmbed ? (
-          <iframe
-            width="100%"
-            height="120"
-            scrolling="no"
-            frameBorder="no"
-            allow="autoplay"
-            src={getSoundCloudEmbedUrl(url)}
-            className="rounded-lg"
-          />
-        ) : (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-2"
-            onClick={() => setShowEmbed(true)}
-          >
-            <Play className="w-4 h-4" />
-            Reproduzir no SoundCloud
-          </Button>
-        )}
-      </div>
-    )
-  }
-
-  if (playerType === 'spotify') {
-    const embedUrl = getSpotifyEmbedUrl(url)
-    if (embedUrl) {
-      return (
-        <div className="space-y-2">
-          {showEmbed ? (
-            <iframe
-              src={embedUrl}
-              width="100%"
-              height="152"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              className="rounded-lg"
-            />
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => setShowEmbed(true)}
-            >
-              <Play className="w-4 h-4" />
-              Reproduzir no Spotify
-            </Button>
-          )}
-        </div>
-      )
+  const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
     }
   }
 
-  if (playerType === 'youtube') {
-    const embedUrl = getYouTubeEmbedUrl(url)
-    if (embedUrl) {
-      return (
-        <div className="space-y-2">
-          {showEmbed ? (
-            <iframe
-              src={embedUrl}
-              width="100%"
-              height="120"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg"
-            />
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => setShowEmbed(true)}
-            >
-              <Play className="w-4 h-4" />
-              Reproduzir no YouTube
-            </Button>
-          )}
-        </div>
-      )
-    }
-  }
-
-  // fallback: external link
-  return (
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="gap-2"
-      asChild
-    >
-      <a href={url} target="_blank" rel="noopener noreferrer">
-        <ExternalLink className="w-4 h-4" />
-        Ouvir
-      </a>
-    </Button>
-  )
-}
-
-function RecommendationCard({ 
-  data, 
-  onVote 
-}: { 
-  data: Recommendation
-  onVote: (id: number, type: 'up' | 'down') => void 
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-0">
-        <div className="flex items-center gap-3">
-          <Avatar>
-            <AvatarImage src={data.user.avatar ?? undefined} />
-            <AvatarFallback className="bg-linear-to-br from-emerald-500 to-blue-600 text-white">
-              {getInitials(data.user.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <Link 
-              href={`/perfil/${data.user.id}`} 
-              className="text-sm font-medium hover:underline"
-            >
-              {data.user.name}
-            </Link>
-            <p className="text-xs text-muted-foreground">{formatTimeAgo(data.createdAt)}</p>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Salvar</DropdownMenuItem>
-              <DropdownMenuItem>Copiar link</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">Denunciar</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-4">
-        <div className="flex gap-4 mb-4">
-          <div className="w-28 h-28 rounded-lg bg-linear-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
-            {data.music.coverUrl ? (
-              <img 
-                src={data.music.coverUrl} 
-                alt={data.music.title}
-                className="w-full h-full object-cover rounded-lg"
-              />
-            ) : (
-              <Music className="w-10 h-10 text-primary/60" />
-            )}
-          </div>
-
-          <div className="flex-1 min-w-0 space-y-2">
-            <div>
-              <h3 className="font-semibold truncate">{data.music.title}</h3>
-              <p className="text-sm text-muted-foreground truncate">{data.music.artist}</p>
-            </div>
-
-            <MusicPlayer url={data.music.link} title={data.music.title} />
-          </div>
-        </div>
-
-        <p className="text-sm mb-3">{data.description}</p>
-
-        <div className="flex flex-wrap gap-2">
-          {data.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-          {data.music.genre && (
-            <Badge variant="outline" className="text-xs">
-              {data.music.genre}
-            </Badge>
-          )}
-        </div>
-      </CardContent>
-
-      <CardFooter className="border-t pt-3">
-        <div className="flex items-center gap-2 w-full">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={cn('gap-2', data.userVote === 'up' && 'text-emerald-500')}
-            onClick={() => onVote(data.id, 'up')}
-          >
-            <ThumbsUp className="w-4 h-4" />
-            {data.stats.upvotes}
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={cn('gap-2', data.userVote === 'down' && 'text-red-500')}
-            onClick={() => onVote(data.id, 'down')}
-          >
-            <ThumbsDown className="w-4 h-4" />
-            {data.stats.downvotes}
-          </Button>
-          
-          <Button variant="ghost" size="sm" className="gap-2">
-            <MessageCircle className="w-4 h-4" />
-            {data.stats.comments}
-          </Button>
-
-          <div className="flex-1" />
-
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Heart className="w-4 h-4" />
-          </Button>
-
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Share2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
-  )
-}
-
-function EmptyState() {
-  return (
-    <Card className="p-8 text-center">
-      <Music className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-      <h3 className="text-lg font-semibold mb-2">Nenhuma recomendacao ainda</h3>
-      <p className="text-muted-foreground mb-4">
-        Seja o primeiro a compartilhar uma descoberta musical!
-      </p>
-      <Button asChild>
-        <Link href="/nova-recomendacao">
-          <Plus className="w-4 h-4 mr-2" />
-          Criar Recomendacao
-        </Link>
-      </Button>
-    </Card>
-  )
-}
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6">
-      {[1, 2, 3].map((i) => (
-        <Card key={i} className="animate-pulse">
-          <CardHeader className="pb-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-muted" />
-              <div className="space-y-2">
-                <div className="h-4 w-24 bg-muted rounded" />
-                <div className="h-3 w-16 bg-muted rounded" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="flex gap-4 mb-4">
-              <div className="w-28 h-28 rounded-lg bg-muted" />
-              <div className="flex-1 space-y-2">
-                <div className="h-5 w-32 bg-muted rounded" />
-                <div className="h-4 w-24 bg-muted rounded" />
-                <div className="h-8 w-full bg-muted rounded" />
-              </div>
-            </div>
-            <div className="h-16 bg-muted rounded mb-3" />
-            <div className="flex gap-2">
-              <div className="h-6 w-16 bg-muted rounded" />
-              <div className="h-6 w-20 bg-muted rounded" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  )
-}
-
-export default function DashboardPage() {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
-  const [viewMode, setViewMode] = useState('list')
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function loadRecommendations() {
-      try {
-        setIsLoading(true)
-        const response = await getRecommendations(20, 0)
-        if (response.success && response.data) {
-          setRecommendations(response.data)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadRecommendations()
-  }, [])
-
-  const handleVote = async (id: number, voteType: 'up' | 'down') => {
-    // optimistic update
-    setRecommendations(prev => prev.map(rec => {
-      if (rec.id !== id) return rec
-      
-      const currentVote = rec.userVote
-      let newVote: 'up' | 'down' | null = voteType
-      let upvoteDelta = 0
-      let downvoteDelta = 0
-
-      if (currentVote === voteType) {
-        newVote = null
-        if (voteType === 'up') upvoteDelta = -1
-        else downvoteDelta = -1
-      } else {
-        if (currentVote === 'up') upvoteDelta = -1
-        else if (currentVote === 'down') downvoteDelta = -1
-        
-        if (voteType === 'up') upvoteDelta += 1
-        else downvoteDelta += 1
-      }
-
-      return {
-        ...rec,
-        userVote: newVote,
-        stats: {
-          ...rec.stats,
-          upvotes: rec.stats.upvotes + upvoteDelta,
-          downvotes: rec.stats.downvotes + downvoteDelta
-        }
-      }
+  const toggleTag = (tag: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : prev.tags.length < 5
+          ? [...prev.tags, tag]
+          : prev.tags
     }))
+    if (errors.tags) {
+      setErrors(prev => ({ ...prev, tags: undefined }))
+    }
+  }
 
-    // call API
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {}
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Titulo e obrigatorio'
+    }
+
+    if (!formData.artist.trim()) {
+      newErrors.artist = 'Artista e obrigatorio'
+    }
+
+    if (!formData.genre) {
+      newErrors.genre = 'Selecione um genero'
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'Descricao e obrigatoria'
+    } else if (formData.description.length < 10) {
+      newErrors.description = 'Descricao deve ter pelo menos 10 caracteres'
+    } else if (formData.description.length > 500) {
+      newErrors.description = 'Descricao deve ter no maximo 500 caracteres'
+    }
+
+    if (formData.tags.length === 0) {
+      newErrors.tags = 'Selecione pelo menos uma tag'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validate()) return
+
+    setIsLoading(true)
+    setErrors({})
+
     try {
-      await voteRecommendation(id, voteType === 'up' ? 'upvote' : 'downvote')
-    } catch (err) {
-      // revert on error - reload data
-      console.error('Vote failed:', err)
-      const response = await getRecommendations(20, 0)
-      if (response.success && response.data) {
-        setRecommendations(response.data)
+      const result = await createRecommendation({
+        title: formData.title.trim(),
+        artist: formData.artist.trim(),
+        genre: formData.genre,
+        description: formData.description.trim(),
+        tags: formData.tags,
+        mediaUrl: formData.mediaUrl.trim() || undefined,
+      })
+
+      if (result.success) {
+        router.push('/dashboard')
       }
+    } catch (err) {
+      setErrors({
+        api: err instanceof Error ? err.message : 'Erro ao criar recomendacao'
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -506,7 +151,6 @@ export default function DashboardPage() {
         {/* Header */}
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
           <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
-            {/* Mobile Menu */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden">
@@ -528,7 +172,6 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
               </Button>
               <Button variant="ghost" size="icon">
                 <Settings className="w-5 h-5" />
@@ -537,67 +180,185 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Main */}
-        <main className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-          <section className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-1">
-              Feed de Recomendacoes
-            </h1>
-            <p className="text-muted-foreground">
-              Descubra novas musicas recomendadas pela comunidade
-            </p>
-          </section>
+        <main className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Nova Recomendacao</h1>
+            <p className="text-muted-foreground">Compartilhe sua descoberta musical com a comunidade</p>
+          </div>
 
-          <section className="flex flex-wrap items-center gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase">Periodo</span>
-              <Select defaultValue="week">
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="week">Ultima Semana</SelectItem>
-                  <SelectItem value="month">Ultimo Mes</SelectItem>
-                  <SelectItem value="all">Todos os Tempos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {errors.api && (
+            <Card className="mb-6 border-destructive bg-destructive/10">
+              <CardContent className="py-4">
+                <p className="text-destructive text-sm">{errors.api}</p>
+              </CardContent>
+            </Card>
+          )}
 
-            <div className="flex-1" />
+          <form onSubmit={handleSubmit}>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Music className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-semibold">Detalhes da Musica</h2>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Title */}
+                <div className="space-y-2">
+                  <label htmlFor="title" className="text-sm font-medium">
+                    Titulo da Musica
+                  </label>
+                  <Input
+                    id="title"
+                    placeholder="Ex: Bohemian Rhapsody"
+                    value={formData.title}
+                    onChange={e => updateField('title', e.target.value)}
+                    className={errors.title ? 'border-destructive' : ''}
+                  />
+                  {errors.title && (
+                    <p className="text-destructive text-sm">{errors.title}</p>
+                  )}
+                </div>
 
-            <ToggleGroup type="single" value={viewMode} onValueChange={(v: SetStateAction<string>) => v && setViewMode(v)}>
-              <ToggleGroupItem value="list" aria-label="Lista">
-                <LayoutList className="w-4 h-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="grid" aria-label="Grade">
-                <LayoutGrid className="w-4 h-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </section>
+                {/* Artist */}
+                <div className="space-y-2">
+                  <label htmlFor="artist" className="text-sm font-medium">
+                    Artista
+                  </label>
+                  <Input
+                    id="artist"
+                    placeholder="Ex: Queen"
+                    value={formData.artist}
+                    onChange={e => updateField('artist', e.target.value)}
+                    className={errors.artist ? 'border-destructive' : ''}
+                  />
+                  {errors.artist && (
+                    <p className="text-destructive text-sm">{errors.artist}</p>
+                  )}
+                </div>
 
-          <section className="space-y-6">
-            {isLoading ? (
-              <LoadingSkeleton />
-            ) : error ? (
-              <Card className="p-8 text-center">
-                <p className="text-destructive mb-4">{error}</p>
-                <Button onClick={() => window.location.reload()}>
-                  Tentar novamente
-                </Button>
-              </Card>
-            ) : recommendations.length === 0 ? (
-              <EmptyState />
-            ) : (
-              recommendations.map((rec) => (
-                <RecommendationCard 
-                  key={rec.id} 
-                  data={rec} 
-                  onVote={handleVote}
-                />
-              ))
-            )}
-          </section>
+                {/* Genre */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Genero</label>
+                  <Select
+                    value={formData.genre}
+                    onValueChange={value => updateField('genre', value)}
+                  >
+                    <SelectTrigger className={errors.genre ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Selecione um genero" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENRES.map(genre => (
+                        <SelectItem key={genre} value={genre.toLowerCase()}>
+                          {genre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.genre && (
+                    <p className="text-destructive text-sm">{errors.genre}</p>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <label htmlFor="description" className="text-sm font-medium">
+                    Por que voce recomenda?
+                  </label>
+                  <Textarea
+                    id="description"
+                    placeholder="Conte por que essa musica e especial para voce..."
+                    value={formData.description}
+                    onChange={e => updateField('description', e.target.value)}
+                    className={`min-h-[120px] ${errors.description ? 'border-destructive' : ''}`}
+                    maxLength={500}
+                  />
+                  <div className="flex justify-between text-sm">
+                    {errors.description ? (
+                      <p className="text-destructive">{errors.description}</p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="text-muted-foreground">
+                      {formData.description.length}/500
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tags */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Tags (max 5)
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {AVAILABLE_TAGS.map(tag => (
+                      <Badge
+                        key={tag}
+                        variant={formData.tags.includes(tag) ? 'default' : 'outline'}
+                        className="cursor-pointer transition-colors"
+                        onClick={() => toggleTag(tag)}
+                      >
+                        {tag}
+                        {formData.tags.includes(tag) && (
+                          <X className="w-3 h-3 ml-1" />
+                        )}
+                      </Badge>
+                    ))}
+                  </div>
+                  {errors.tags && (
+                    <p className="text-destructive text-sm">{errors.tags}</p>
+                  )}
+                </div>
+
+                {/* Media URL (optional) */}
+                <div className="space-y-2">
+                  <label htmlFor="mediaUrl" className="text-sm font-medium">
+                    Link (opcional)
+                  </label>
+                  <Input
+                    id="mediaUrl"
+                    type="url"
+                    placeholder="https://open.spotify.com/track/..."
+                    value={formData.mediaUrl}
+                    onChange={e => updateField('mediaUrl', e.target.value)}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Spotify, YouTube, SoundCloud, etc.
+                  </p>
+                </div>
+
+                {/* Submit */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => router.back()}
+                    disabled={isLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Publicando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Publicar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </form>
         </main>
       </div>
     </div>
