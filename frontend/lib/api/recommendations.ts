@@ -1,6 +1,6 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
-interface CreateRecommendationPayload {
+export interface CreateRecommendationPayload {
   title: string
   artist: string
   genre: string
@@ -9,59 +9,109 @@ interface CreateRecommendationPayload {
   mediaUrl?: string
 }
 
-export async function createRecommendation(payload: CreateRecommendationPayload) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/v1/recommendations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`,
-      },
-      body: JSON.stringify(payload),
-    })
+export interface Recommendation {
+  id: number
+  user: {
+    id: number
+    name: string
+    avatar: string | null
+  }
+  music: {
+    id: number
+    title: string
+    artist: string
+    genre: string
+    coverUrl: string | null
+    link: string
+  }
+  description: string
+  tags: string[]
+  stats: {
+    upvotes: number
+    downvotes: number
+    comments: number
+  }
+  createdAt: string
+}
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.message || 'Erro ao criar recomendação')
-    }
+export interface RecommendationResponse {
+  success: boolean
+  data: Recommendation
+}
 
-    return await response.json()
-  } catch (error) {
-    console.error('Erro ao criar recomendação:', error)
-    throw error
+export async function createRecommendation(payload: CreateRecommendationPayload): Promise<RecommendationResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/recommendations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Erro ao criar recomendação' }))
+    throw new Error(error.message || `HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export interface RecommendationsListResponse {
+  success: boolean
+  data: Recommendation[]
+  pagination: {
+    limit: number
+    offset: number
   }
 }
 
-export async function getRecommendations(limit = 10, offset = 0) {
-  try {
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString(),
-    })
+export async function getRecommendations(limit = 10, offset = 0): Promise<RecommendationsListResponse> {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  })
 
-    const response = await fetch(
-      `${API_BASE_URL}/v1/recommendations?${params.toString()}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    )
+  const response = await fetch(`${API_BASE_URL}/v1/recommendations?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  })
 
-    if (!response.ok) {
-      throw new Error('Erro ao buscar recomendações')
-    }
+  if (!response.ok) {
+    throw new Error('Erro ao buscar recomendações')
+  }
 
-    return await response.json()
-  } catch (error) {
-    console.error('Erro ao buscar recomendações:', error)
-    throw error
+  return response.json()
+}
+
+export interface VoteResponse {
+  success: boolean
+  data: {
+    action: 'created' | 'removed' | 'changed'
+    voteType: 'upvote' | 'downvote' | null
   }
 }
 
-function getAuthToken(): string {
-  // TODO: Implementar recuperação do token do localStorage ou cookie
-  // Por enquanto retorna uma string vazia
-  return localStorage?.getItem('authToken') || ''
+export async function voteRecommendation(
+  postId: number, 
+  voteType: 'upvote' | 'downvote'
+): Promise<VoteResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/recommendations/${postId}/vote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ voteType }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Erro ao votar' }))
+    throw new Error(error.error || error.message || `HTTP ${response.status}`)
+  }
+
+  return response.json()
 }

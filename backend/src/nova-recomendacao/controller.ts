@@ -1,39 +1,53 @@
 import { Elysia, t } from "elysia";
 import { RecommendationService } from "./service";
+import { betterAuth } from "../core/auth/macro";
+import { auth } from "../core/auth/auth";
+import { UserRepository } from "../modules/perfil/repository";
 
 const recommendationService = new RecommendationService();
 
 export const recommendationRoutes = new Elysia({
   prefix: "/recommendations",
 })
-  // POST /recommendations - Criar nova recomendação
+  .use(betterAuth)
   .post(
     "/",
-    async ({ body, user }: { body: any; user?: any }) => {
-      if (!user?.id) {
-        throw new Error("Usuário não autenticado");
+    async (ctx) => {
+      const user = ctx.user as { id: string; email: string; name?: string } | undefined;
+
+      if (!user?.email) {
+        return ctx.status(401, { success: false, error: "Nao autenticado" });
+      }
+
+      let dbUser = await UserRepository.findByEmail(user.email);
+
+      if (!dbUser) {
+        dbUser = await UserRepository.create({
+          email: user.email,
+          name: user.name || user.email.split("@")[0] || "",
+          password_hash: "",
+        });
+      }
+
+      if (!dbUser) {
+        return ctx.status(500, { success: false, error: "Falha ao sincronizar usuario" });
       }
 
       try {
-        const recommendation =
-          await recommendationService.createRecommendation({
-            title: body.title,
-            artist: body.artist,
-            genre: body.genre,
-            description: body.description,
-            tags: body.tags,
-            mediaUrl: body.mediaUrl,
-            userId: user.id,
-          });
+        const recommendation = await recommendationService.createRecommendation({
+          title: ctx.body.title,
+          artist: ctx.body.artist,
+          genre: ctx.body.genre,
+          description: ctx.body.description,
+          tags: ctx.body.tags,
+          mediaUrl: ctx.body.mediaUrl,
+          userId: dbUser.id,
+        });
 
-        return {
-          success: true,
-          data: recommendation,
-        };
+        return { success: true, data: recommendation };
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Erro ao criar recomendação";
-        throw new Error(errorMessage);
+        const message = err instanceof Error ? err.message : "Erro ao criar recomendacao";
+        return ctx.status(400, { success: false, error: message });
       }
     },
     {
@@ -48,30 +62,92 @@ export const recommendationRoutes = new Elysia({
       auth: true,
       detail: {
         tags: ["Recommendations"],
-        summary: "Criar nova recomendação de música",
-        description: "Cria uma nova recomendação de música com tags",
+        summary: "Criar nova recomendacao de musica",
       },
     }
   )
+  .post(
+    "/:id/vote",
+    async (ctx) => {
+      const user = ctx.user as { id: string; email: string; name?: string } | undefined;
 
-  // GET /recommendations - Listar recomendações
+      if (!user?.email) {
+        return ctx.status(401, { success: false, error: "Nao autenticado" });
+      }
+
+      const dbUser = await UserRepository.findByEmail(user.email);
+
+      if (!dbUser) {
+        return ctx.status(401, { success: false, error: "Usuario nao encontrado" });
+      }
+
+      const postId = parseInt(ctx.params.id);
+      if (isNaN(postId)) {
+        return ctx.status(400, { success: false, error: "ID invalido" });
+      }
+
+      try {
+        const result = await recommendationService.vote({
+          postId,
+          userId: dbUser.id,
+          voteType: ctx.body.voteType,
+        });
+
+        return { success: true, data: result };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Erro ao votar";
+        return ctx.status(400, { success: false, error: message });
+      }
+    },
+    {
+      body: t.Object({
+        voteType: t.Union([t.Literal("upvote"), t.Literal("downvote")]),
+      }),
+      auth: true,
+      detail: {
+        tags: ["Recommendations"],
+        summary: "Votar em uma recomendacao",
+      },
+    }
+  )
   .get(
     "/",
-    async ({ query }) => {
-      const limit = Math.min(query.limit ? parseInt(query.limit) : 10, 100);
-      const offset = query.offset ? parseInt(query.offset) : 0;
+    async (ctx) => {
+      const limit = Math.min(ctx.query.limit ? parseInt(ctx.query.limit) : 10, 100);
+      const offset = ctx.query.offset ? parseInt(ctx.query.offset) : 0;
 
-      const recommendations =
-        await recommendationService.getRecommendations(limit, offset);
+      // check session manually (without blocking if not logged in)
+      let currentUserId: number | undefined;
+      try {
+        const session = await auth.api.getSession({
+          headers: ctx.request.headers,
+        });
+        if (session?.user?.email) {
+          const dbUser = await UserRepository.findByEmail(session.user.email);
+          currentUserId = dbUser?.id;
+        }
+      } catch {
+        // not logged in, that's fine
+      }
 
-      return {
-        success: true,
-        data: recommendations,
-        pagination: {
+      try {
+        const recommendations = await recommendationService.getRecommendations(
           limit,
           offset,
-        },
-      };
+          currentUserId
+        );
+        return {
+          success: true,
+          data: recommendations,
+          pagination: { limit, offset },
+        };
+      } catch (err) {
+        return {
+          success: false,
+          data: [],
+          pagination: { limit, offset },
+        };
+      }
     },
     {
       query: t.Object({
@@ -80,8 +156,7 @@ export const recommendationRoutes = new Elysia({
       }),
       detail: {
         tags: ["Recommendations"],
-        summary: "Listar recomendações",
-        description: "Lista todas as recomendações de músicas com paginação",
+        summary: "Listar recomendacoes",
       },
     }
   );
