@@ -33,6 +33,7 @@ import {
 import { SidebarContent } from '@/components/sidebar'
 import { getFavorites, toggleFavorite, FavoriteSong } from '@/lib/api/favourites'
 import { useAuth } from '@/lib/auth-context'
+import { resolveCoverUrl } from '@/utils/image'
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -61,7 +62,7 @@ function FavoriteCard({
             <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
               {favorite.song.coverUrl ? (
                 <img
-                  src={favorite.song.coverUrl}
+                  src={resolveCoverUrl(favorite.song.coverUrl) || ""}
                   alt={favorite.song.title}
                   className="w-full h-full object-cover rounded-lg"
                 />

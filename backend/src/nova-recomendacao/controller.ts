@@ -4,6 +4,8 @@ import { betterAuth } from "../core/auth/macro";
 import { auth } from "../core/auth/auth";
 import { UserRepository } from "../modules/perfil/repository";
 import { mkdir } from "node:fs/promises";
+import { NotificationRepository } from "../modules/notifications/repository";
+import { prisma } from "../db/client";
 
 const recommendationService = new RecommendationService();
 
@@ -120,45 +122,60 @@ export const recommendationRoutes = new Elysia({
         | undefined;
 
       if (!user?.email) {
-        return ctx.status(401, { success: false, error: "Nao autenticado" });
+        ctx.set.status = 401;
+        return { success: false, error: "Não autenticado" };
       }
 
       const dbUser = await UserRepository.findByEmail(user.email);
-
       if (!dbUser) {
-        return ctx.status(401, {
-          success: false,
-          error: "Usuario nao encontrado",
-        });
+        ctx.set.status = 404;
+        return { success: false, error: "Usuário não encontrado" };
       }
 
-      const postId = parseInt(ctx.params.id);
-      if (isNaN(postId)) {
-        return ctx.status(400, { success: false, error: "ID invalido" });
+      const postId = Number(ctx.params.id);
+      const { voteType } = ctx.body;
+
+      // ✅ Processar o voto
+      const voteResult = await recommendationService.vote({
+        postId,
+        userId: dbUser.id,
+        voteType,
+      });
+
+      // ✅ CRIAR NOTIFICAÇÃO (apenas para upvote criado)
+      if (voteType === "upvote" && voteResult.action === "created") {
+        try {
+          // Buscar dono da recomendação
+          const post = await prisma
+            .selectFrom("posts")
+            .select(["user_id"])
+            .where("id", "=", postId)
+            .executeTakeFirst();
+
+          // Só notifica se não for voto próprio
+          if (post && post.user_id !== dbUser.id) {
+            await NotificationRepository.create({
+              user_id: post.user_id,
+              type: "vote",
+              content: `${dbUser.name || "Alguém"} curtiu sua recomendação`,
+              related_id: postId,
+              related_type: "post",
+            });
+          }
+        } catch (error) {
+          console.error("❌ Erro ao criar notificação:", error);
+        }
       }
 
-      try {
-        const result = await recommendationService.vote({
-          postId,
-          userId: dbUser.id,
-          voteType: ctx.body.voteType,
-        });
-
-        return { success: true, data: result };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Erro ao votar";
-        return ctx.status(400, { success: false, error: message });
-      }
+      return { success: true, data: voteResult };
     },
     {
+      params: t.Object({ id: t.Numeric() }),
       body: t.Object({
         voteType: t.Union([t.Literal("upvote"), t.Literal("downvote")]),
       }),
       auth: true,
-      detail: {
-        tags: ["Recommendations"],
-        summary: "Votar em uma recomendacao",
-      },
+      detail: { tags: ["Recommendations"], summary: "Votar em recomendação" },
     }
   )
   .get(

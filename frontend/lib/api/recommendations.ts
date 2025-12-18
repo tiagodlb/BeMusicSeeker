@@ -7,6 +7,7 @@ export interface CreateRecommendationPayload {
   description: string
   tags: string[]
   mediaUrl?: string
+  coverImage?: File | null
 }
 
 export interface Recommendation {
@@ -42,23 +43,37 @@ export interface RecommendationResponse {
 }
 
 export async function createRecommendation(payload: CreateRecommendationPayload): Promise<RecommendationResponse> {
+  const formData = new FormData()
+
+  // Adicionamos os campos textuais
+  formData.append('title', payload.title)
+  formData.append('artist', payload.artist)
+  formData.append('genre', payload.genre)
+  formData.append('description', payload.description)
+  formData.append('mediaUrl', payload.mediaUrl || '')
+  
+  // Arrays precisam ser enviados de forma específica ou serializada dependendo do backend
+  // Opção 1: Enviar string JSON (mais fácil para tratar no Elysia)
+  formData.append('tags', JSON.stringify(payload.tags)) 
+  
+  // Adicionamos a imagem se existir
+  if (payload.coverImage) {
+    formData.append('coverImage', payload.coverImage)
+  }
+
   const response = await fetch(`${API_BASE_URL}/v1/recommendations`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     credentials: 'include',
-    body: JSON.stringify(payload),
+    body: formData,
   })
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Erro ao criar recomendação' }))
-    throw new Error(error.message || `HTTP ${response.status}`)
+    throw new Error(error.error || error.message || `HTTP ${response.status}`)
   }
 
   return response.json()
 }
-
 export interface RecommendationsListResponse {
   success: boolean
   data: Recommendation[]

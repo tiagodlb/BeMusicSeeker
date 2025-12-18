@@ -1,8 +1,8 @@
 'use client'
 
-import { SetStateAction, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { 
+import {
   LayoutList,
   LayoutGrid,
   Music,
@@ -11,10 +11,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Share2,
-  Menu,
-  Search,
-  Bell,
-  Settings,
   Heart,
   Loader2,
   Plus,
@@ -23,16 +19,15 @@ import {
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select'
 import {
   DropdownMenu,
@@ -41,40 +36,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { SidebarContent } from '@/components/sidebar'
-import { getRecommendations } from '@/lib/api/recommendations'
+import {
+  getRecommendations,
+  voteRecommendation,
+  type Recommendation
+} from '@/lib/api/recommendations'
 import { checkFavorites, toggleFavorite } from '@/lib/api/favourites'
 import { CommentsDrawer } from '@/components/comments-drawer'
 import { useAuth } from '@/lib/auth-context'
+import { resolveCoverUrl } from '@/utils/image'
 
-interface Recommendation {
-  id: number
-  user: {
-    id: number
-    name: string
-    avatar: string | null
-  }
-  music: {
-    id: number
-    title: string
-    artist: string
-    genre: string
-    coverUrl: string | null
-    link: string
-  }
-  description: string
-  tags: string[]
-  stats: {
-    upvotes: number
-    downvotes: number
-    comments: number
-  }
-  createdAt: string
-  userVote?: 'up' | 'down' | null
-  isFavorite?: boolean
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+
+// --- Helpers ---
 
 function getInitials(name: string): string {
   return name
@@ -99,6 +74,8 @@ function formatTimeAgo(dateString: string): string {
   if (diffDays < 7) return `${diffDays}d atrás`
   return date.toLocaleDateString('pt-BR')
 }
+
+// --- Player Logic ---
 
 function getPlayerType(url: string): 'soundcloud' | 'spotify' | 'youtube' | 'external' | null {
   if (!url) return null
@@ -136,35 +113,17 @@ function MusicPlayer({ url, title }: { url: string; title: string }) {
   const [showEmbed, setShowEmbed] = useState(false)
 
   if (!playerType) {
-    return (
-      <div className="text-sm text-muted-foreground italic">
-        Sem link de audio
-      </div>
-    )
+    return <div className="text-sm text-muted-foreground italic">Sem link de áudio</div>
   }
 
   if (playerType === 'soundcloud') {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 mt-2">
         {showEmbed ? (
-          <iframe
-            width="100%"
-            height="120"
-            scrolling="no"
-            frameBorder="no"
-            allow="autoplay"
-            src={getSoundCloudEmbedUrl(url)}
-            className="rounded-lg"
-          />
+          <iframe width="100%" height="120" scrolling="no" frameBorder="no" allow="autoplay" src={getSoundCloudEmbedUrl(url)} className="rounded-lg" />
         ) : (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-2"
-            onClick={() => setShowEmbed(true)}
-          >
-            <Play className="w-4 h-4" />
-            Reproduzir no SoundCloud
+          <Button variant="outline" size="sm" className="gap-2 w-full justify-start" onClick={() => setShowEmbed(true)}>
+            <Play className="w-4 h-4" /> Reproduzir no SoundCloud
           </Button>
         )}
       </div>
@@ -175,26 +134,12 @@ function MusicPlayer({ url, title }: { url: string; title: string }) {
     const embedUrl = getSpotifyEmbedUrl(url)
     if (embedUrl) {
       return (
-        <div className="space-y-2">
+        <div className="space-y-2 mt-2">
           {showEmbed ? (
-            <iframe
-              src={embedUrl}
-              width="100%"
-              height="152"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              className="rounded-lg"
-            />
+            <iframe src={embedUrl} width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" className="rounded-lg" />
           ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => setShowEmbed(true)}
-            >
-              <Play className="w-4 h-4" />
-              Reproduzir no Spotify
+            <Button variant="outline" size="sm" className="gap-2 w-full justify-start" onClick={() => setShowEmbed(true)}>
+              <Play className="w-4 h-4" /> Reproduzir no Spotify
             </Button>
           )}
         </div>
@@ -206,26 +151,12 @@ function MusicPlayer({ url, title }: { url: string; title: string }) {
     const embedUrl = getYouTubeEmbedUrl(url)
     if (embedUrl) {
       return (
-        <div className="space-y-2">
+        <div className="space-y-2 mt-2">
           {showEmbed ? (
-            <iframe
-              src={embedUrl}
-              width="100%"
-              height="120"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg"
-            />
+            <iframe src={embedUrl} width="100%" height="200" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="rounded-lg" />
           ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => setShowEmbed(true)}
-            >
-              <Play className="w-4 h-4" />
-              Reproduzir no YouTube
+            <Button variant="outline" size="sm" className="gap-2 w-full justify-start" onClick={() => setShowEmbed(true)}>
+              <Play className="w-4 h-4" /> Reproduzir no YouTube
             </Button>
           )}
         </div>
@@ -234,26 +165,22 @@ function MusicPlayer({ url, title }: { url: string; title: string }) {
   }
 
   return (
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="gap-2"
-      asChild
-    >
+    <Button variant="outline" size="sm" className="gap-2 mt-2 w-full justify-start" asChild>
       <a href={url} target="_blank" rel="noopener noreferrer">
-        <ExternalLink className="w-4 h-4" />
-        Ouvir
+        <ExternalLink className="w-4 h-4" /> Ouvir Externamente
       </a>
     </Button>
   )
 }
 
-function RecommendationCard({ 
-  data, 
+// --- Components ---
+
+function RecommendationCard({
+  data,
   onVote,
   onCommentsChange,
   onFavoriteToggle,
-}: { 
+}: {
   data: Recommendation
   onVote: (id: number, type: 'up' | 'down') => void
   onCommentsChange: (id: number, delta: number) => void
@@ -268,33 +195,36 @@ function RecommendationCard({
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-0">
+    <Card className="hover:shadow-sm transition-shadow">
+      <CardHeader className="pb-0 pt-4 px-4">
         <div className="flex items-center gap-3">
-          <Avatar>
-            <AvatarImage src={data.user.avatar ?? undefined} />
-            <AvatarFallback className="bg-linear-to-br from-emerald-500 to-blue-600 text-white">
-              {getInitials(data.user.name)}
-            </AvatarFallback>
-          </Avatar>
+          <Link href={`/perfil/${data.user.id}`}>
+            <Avatar className="cursor-pointer">
+              <AvatarImage src={data.user.avatar ?? undefined} />
+              <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-blue-600 text-white text-xs">
+                {getInitials(data.user.name)}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
           <div className="flex-1 min-w-0">
-            <Link 
-              href={`/perfil/${data.user.id}`} 
-              className="text-sm font-medium hover:underline"
-            >
+            <Link href={`/perfil/${data.user.id}`} className="text-sm font-medium hover:underline block truncate">
               {data.user.name}
             </Link>
             <p className="text-xs text-muted-foreground">{formatTimeAgo(data.createdAt)}</p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>Salvar</DropdownMenuItem>
-              <DropdownMenuItem>Copiar link</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleFavorite}>
+                {data.isFavorite ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(window.location.href)}>
+                Copiar link
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive">Denunciar</DropdownMenuItem>
             </DropdownMenuContent>
@@ -302,83 +232,90 @@ function RecommendationCard({
         </div>
       </CardHeader>
 
-      <CardContent className="pt-4">
-        <div className="flex gap-4 mb-4">
-          <div className="w-28 h-28 rounded-lg bg-linear-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
+      <CardContent className="pt-4 px-4">
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <div className="w-full sm:w-32 sm:h-32 aspect-square rounded-lg bg-gradient-to-br from-primary/10 to-purple-600/10 border flex items-center justify-center shrink-0 overflow-hidden relative group">
             {data.music.coverUrl ? (
-              <img 
-                src={data.music.coverUrl} 
+              <img
+                src={resolveCoverUrl(data.music.coverUrl) || ''}
                 alt={data.music.title}
-                className="w-full h-full object-cover rounded-lg"
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.parentElement?.classList.add('fallback-icon')
+                }}
               />
             ) : (
-              <Music className="w-10 h-10 text-primary/60" />
+              <Music className="w-10 h-10 text-primary/40" />
+            )}
+            {data.music.coverUrl && (
+              <Music className="w-10 h-10 text-primary/40 hidden fallback-icon:block absolute" />
             )}
           </div>
 
-          <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div>
-              <h3 className="font-semibold truncate">{data.music.title}</h3>
-              <p className="text-sm text-muted-foreground truncate">{data.music.artist}</p>
+              <h3 className="font-semibold text-lg leading-tight truncate" title={data.music.title}>
+                {data.music.title}
+              </h3>
+              <p className="text-sm text-muted-foreground truncate" title={data.music.artist}>
+                {data.music.artist}
+              </p>
             </div>
-
             <MusicPlayer url={data.music.link} title={data.music.title} />
           </div>
         </div>
 
-        <p className="text-sm mb-3">{data.description}</p>
+        <p className="text-sm mb-4 text-foreground/90 whitespace-pre-wrap">{data.description}</p>
 
         <div className="flex flex-wrap gap-2">
-          {data.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
           {data.music.genre && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs font-normal">
               {data.music.genre}
             </Badge>
           )}
+          {data.tags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-xs font-normal">
+              #{tag}
+            </Badge>
+          ))}
         </div>
       </CardContent>
 
-      <CardFooter className="border-t pt-3">
+      <CardFooter className="border-t pt-3 pb-3 px-4 bg-muted/5">
         <div className="flex items-center gap-1 w-full">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={cn('gap-1.5', data.userVote === 'up' && 'text-emerald-500')}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('gap-1.5 h-8', data.userVote === 'up' && 'text-emerald-600 bg-emerald-500/10')}
             onClick={() => onVote(data.id, 'up')}
           >
-            <ThumbsUp className="w-4 h-4" />
-            <span className="tabular-nums">{data.stats.upvotes}</span>
+            <ThumbsUp className={cn("w-4 h-4", data.userVote === 'up' && "fill-current")} />
+            <span className="tabular-nums font-medium">{data.stats.upvotes}</span>
           </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={cn('gap-1.5', data.userVote === 'down' && 'text-red-500')}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('gap-1.5 h-8', data.userVote === 'down' && 'text-red-600 bg-red-500/10')}
             onClick={() => onVote(data.id, 'down')}
           >
-            <ThumbsDown className="w-4 h-4" />
-            <span className="tabular-nums">{data.stats.downvotes}</span>
+            <ThumbsDown className={cn("w-4 h-4", data.userVote === 'down' && "fill-current")} />
+            <span className="tabular-nums font-medium">{data.stats.downvotes}</span>
           </Button>
-          
-          <CommentsDrawer 
-            postId={data.id} 
+
+          <CommentsDrawer
+            postId={data.id}
             commentsCount={data.stats.comments}
             onCountChange={(delta) => onCommentsChange(data.id, delta)}
           />
 
           <div className="flex-1" />
 
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={cn(
-              "h-8 w-8 transition-colors",
-              data.isFavorite && "text-red-500 hover:text-red-600"
-            )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-8 w-8 transition-colors", data.isFavorite && "text-red-500 hover:text-red-600")}
             onClick={handleFavorite}
             disabled={favoriteLoading}
           >
@@ -389,7 +326,7 @@ function RecommendationCard({
             )}
           </Button>
 
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
             <Share2 className="w-4 h-4" />
           </Button>
         </div>
@@ -400,16 +337,16 @@ function RecommendationCard({
 
 function EmptyState() {
   return (
-    <Card className="p-8 text-center">
-      <Music className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-      <h3 className="text-lg font-semibold mb-2">Nenhuma recomendacao ainda</h3>
-      <p className="text-muted-foreground mb-4">
-        Seja o primeiro a compartilhar uma descoberta musical!
+    <Card className="p-8 text-center border-dashed">
+      <Music className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+      <h3 className="text-lg font-semibold mb-2">Nenhuma recomendação ainda</h3>
+      <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
+        Seja o primeiro a compartilhar uma descoberta musical com a comunidade!
       </p>
       <Button asChild>
         <Link href="/nova-recomendacao">
           <Plus className="w-4 h-4 mr-2" />
-          Criar Recomendacao
+          Criar Recomendação
         </Link>
       </Button>
     </Card>
@@ -421,7 +358,7 @@ function LoadingSkeleton() {
     <div className="space-y-6">
       {[1, 2, 3].map((i) => (
         <Card key={i} className="animate-pulse">
-          <CardHeader className="pb-0">
+          <CardHeader className="pb-0 pt-4 px-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-muted" />
               <div className="space-y-2">
@@ -430,16 +367,17 @@ function LoadingSkeleton() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-4">
+          <CardContent className="pt-4 px-4">
             <div className="flex gap-4 mb-4">
-              <div className="w-28 h-28 rounded-lg bg-muted" />
+              <div className="w-28 h-28 rounded-lg bg-muted shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-5 w-32 bg-muted rounded" />
-                <div className="h-4 w-24 bg-muted rounded" />
-                <div className="h-8 w-full bg-muted rounded" />
+                <div className="h-6 w-3/4 bg-muted rounded" />
+                <div className="h-4 w-1/2 bg-muted rounded" />
+                <div className="h-8 w-full bg-muted rounded mt-2" />
               </div>
             </div>
-            <div className="h-16 bg-muted rounded mb-3" />
+            <div className="h-4 w-full bg-muted rounded mb-2" />
+            <div className="h-4 w-2/3 bg-muted rounded mb-4" />
             <div className="flex gap-2">
               <div className="h-6 w-16 bg-muted rounded" />
               <div className="h-6 w-20 bg-muted rounded" />
@@ -451,6 +389,8 @@ function LoadingSkeleton() {
   )
 }
 
+// --- Main Page ---
+
 export default function DashboardPage() {
   const { isAuthenticated } = useAuth()
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
@@ -458,43 +398,48 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadRecommendations() {
-      try {
-        setIsLoading(true)
-        const response = await getRecommendations(20, 0)
-        if (response.success && response.data) {
-          setRecommendations(response.data)
+  // Filtros
+  const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'all'>('all')
 
-          // load favorite status if authenticated
-          if (isAuthenticated && response.data.length > 0) {
-            const songIds = response.data.map((r) => r.music.id)
-            const favResponse = await checkFavorites(songIds)
-            if (favResponse.success && favResponse.data) {
-              const savedSet = new Set(favResponse.data.savedIds)
-              setRecommendations((prev) =>
-                prev.map((rec) => ({
-                  ...rec,
-                  isFavorite: savedSet.has(rec.music.id),
-                }))
-              )
-            }
+  const loadRecommendations = async () => {
+    try {
+      setIsLoading(true)
+      // Adicionado filtro de período
+      const response = await getRecommendations(20, 0, undefined, 'recent', period)
+
+      if (response.success && response.data) {
+        let data = response.data
+
+        // Checar favoritos se estiver logado
+        if (isAuthenticated && data.length > 0) {
+          const songIds = data.map((r) => r.music.id)
+          const favResponse = await checkFavorites(songIds)
+          if (favResponse.success && favResponse.data) {
+            const savedSet = new Set(favResponse.data.savedIds)
+            data = data.map((rec) => ({
+              ...rec,
+              isFavorite: savedSet.has(rec.music.id),
+            }))
           }
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar')
-      } finally {
-        setIsLoading(false)
+        setRecommendations(data)
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar')
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     loadRecommendations()
-  }, [isAuthenticated])
+  }, [isAuthenticated, period]) // Recarrega quando autenticação ou período mudam
 
-  const handleVote = (id: number, voteType: 'up' | 'down') => {
+  const handleVote = async (id: number, voteType: 'up' | 'down') => {
+    // 1. Otimistic Update
     setRecommendations(prev => prev.map(rec => {
       if (rec.id !== id) return rec
-      
+
       const currentVote = rec.userVote
       let newVote: 'up' | 'down' | null = voteType
       let upvoteDelta = 0
@@ -507,7 +452,7 @@ export default function DashboardPage() {
       } else {
         if (currentVote === 'up') upvoteDelta = -1
         else if (currentVote === 'down') downvoteDelta = -1
-        
+
         if (voteType === 'up') upvoteDelta += 1
         else downvoteDelta += 1
       }
@@ -523,7 +468,14 @@ export default function DashboardPage() {
       }
     }))
 
-    // TODO: call API to persist vote
+    // 2. API Call
+    try {
+      if (!isAuthenticated) return // Opcional: mostrar toast de login
+      await voteRecommendation(id, voteType === 'up' ? 'upvote' : 'downvote')
+    } catch (err) {
+      console.error('Failed to vote:', err)
+      // Opcional: Reverter estado em caso de erro
+    }
   }
 
   const handleCommentsChange = (id: number, delta: number) => {
@@ -555,70 +507,75 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-        {/* Main */}
-        <main className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-          <section className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-1">
-              Feed de Recomendacoes
-            </h1>
-            <p className="text-muted-foreground">
-              Descubra novas musicas recomendadas pela comunidade
-            </p>
-          </section>
+      <main className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
+        <section className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">
+            Feed de Recomendações
+          </h1>
+          <p className="text-muted-foreground">
+            Descubra novas músicas recomendadas pela comunidade
+          </p>
+        </section>
 
-          <section className="flex flex-wrap items-center gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase">Periodo</span>
-              <Select defaultValue="week">
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="week">Ultima Semana</SelectItem>
-                  <SelectItem value="month">Ultimo Mes</SelectItem>
-                  <SelectItem value="all">Todos os Tempos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <section className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase">Período</span>
+            <Select
+              value={period}
+              onValueChange={(v) => setPeriod(v as 'today' | 'week' | 'month' | 'all')}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="week">Última Semana</SelectItem>
+                <SelectItem value="month">Último Mês</SelectItem>
+                <SelectItem value="all">Todos os Tempos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="flex-1" />
+          <div className="flex-1" />
 
-            <ToggleGroup type="single" value={viewMode} onValueChange={(v: SetStateAction<string>) => v && setViewMode(v)}>
-              <ToggleGroupItem value="list" aria-label="Lista">
-                <LayoutList className="w-4 h-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="grid" aria-label="Grade">
-                <LayoutGrid className="w-4 h-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </section>
+          <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v)}>
+            <ToggleGroupItem value="list" aria-label="Lista">
+              <LayoutList className="w-4 h-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="grid" aria-label="Grade">
+              <LayoutGrid className="w-4 h-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </section>
 
-          <section className="space-y-6">
-            {isLoading ? (
-              <LoadingSkeleton />
-            ) : error ? (
-              <Card className="p-8 text-center">
-                <p className="text-destructive mb-4">{error}</p>
-                <Button onClick={() => window.location.reload()}>
-                  Tentar novamente
-                </Button>
-              </Card>
-            ) : recommendations.length === 0 ? (
-              <EmptyState />
-            ) : (
-              recommendations.map((rec) => (
-                <RecommendationCard 
-                  key={rec.id} 
-                  data={rec} 
-                  onVote={handleVote}
-                  onCommentsChange={handleCommentsChange}
-                  onFavoriteToggle={handleFavoriteToggle}
-                />
-              ))
-            )}
-          </section>
-        </main>
-      </div>
+        <section className={cn(
+          "space-y-6",
+          viewMode === 'grid' && "grid grid-cols-1 md:grid-cols-2 gap-6 space-y-0"
+        )}>
+          {isLoading ? (
+            <LoadingSkeleton />
+          ) : error ? (
+            <Card className="p-8 text-center border-destructive/20 bg-destructive/5">
+              <p className="text-destructive mb-4 font-medium">{error}</p>
+              <Button onClick={() => loadRecommendations()} variant="outline">
+                Tentar novamente
+              </Button>
+            </Card>
+          ) : recommendations.length === 0 ? (
+            <EmptyState />
+          ) : (
+            recommendations.map((rec) => (
+              <RecommendationCard
+                key={rec.id}
+                data={rec}
+                onVote={handleVote}
+                onCommentsChange={handleCommentsChange}
+                onFavoriteToggle={handleFavoriteToggle}
+              />
+            ))
+          )}
+        </section>
+      </main>
+    </div>
   )
 }

@@ -1,17 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Menu, Search, Bell, Settings, Plus, Music, X, Loader2 } from 'lucide-react'
+import { Plus, Music, X, Loader2, Image as ImageIcon, Upload, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { SidebarContent } from '@/components/sidebar'
 import { createRecommendation } from '@/lib/api/recommendations'
 
 const GENRES = [
@@ -33,6 +30,7 @@ interface FormData {
   description: string
   tags: string[]
   mediaUrl: string
+  coverImage: File | null // Novo estado para o arquivo
 }
 
 interface FormErrors {
@@ -41,13 +39,17 @@ interface FormErrors {
   genre?: string
   description?: string
   tags?: string
+  coverImage?: string
   api?: string
 }
 
 export default function NovaRecomendacaoPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  
   const [formData, setFormData] = useState<FormData>({
     title: '',
     artist: '',
@@ -55,6 +57,7 @@ export default function NovaRecomendacaoPage() {
     description: '',
     tags: [],
     mediaUrl: '',
+    coverImage: null
   })
 
   const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
@@ -78,32 +81,47 @@ export default function NovaRecomendacaoPage() {
     }
   }
 
+  // Lógica de manipulação de imagem
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setErrors(prev => ({ ...prev, coverImage: 'A imagem deve ter no maximo 5MB' }))
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        setErrors(prev => ({ ...prev, coverImage: 'O arquivo deve ser uma imagem' }))
+        return
+      }
+
+      setFormData(prev => ({ ...prev, coverImage: file }))
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+      setErrors(prev => ({ ...prev, coverImage: undefined }))
+    }
+  }
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, coverImage: null }))
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const validate = (): boolean => {
     const newErrors: FormErrors = {}
 
-    if (!formData.title.trim()) {
-      newErrors.title = 'Titulo e obrigatorio'
-    }
-
-    if (!formData.artist.trim()) {
-      newErrors.artist = 'Artista e obrigatorio'
-    }
-
-    if (!formData.genre) {
-      newErrors.genre = 'Selecione um genero'
-    }
-
+    if (!formData.title.trim()) newErrors.title = 'Titulo e obrigatorio'
+    if (!formData.artist.trim()) newErrors.artist = 'Artista e obrigatorio'
+    if (!formData.genre) newErrors.genre = 'Selecione um genero'
+    
     if (!formData.description.trim()) {
       newErrors.description = 'Descricao e obrigatoria'
     } else if (formData.description.length < 10) {
       newErrors.description = 'Descricao deve ter pelo menos 10 caracteres'
-    } else if (formData.description.length > 500) {
-      newErrors.description = 'Descricao deve ter no maximo 500 caracteres'
     }
 
-    if (formData.tags.length === 0) {
-      newErrors.tags = 'Selecione pelo menos uma tag'
-    }
+    if (formData.tags.length === 0) newErrors.tags = 'Selecione pelo menos uma tag'
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -125,6 +143,7 @@ export default function NovaRecomendacaoPage() {
         description: formData.description.trim(),
         tags: formData.tags,
         mediaUrl: formData.mediaUrl.trim() || undefined,
+        coverImage: formData.coverImage // Enviando a imagem
       })
 
       if (result.success) {
@@ -164,38 +183,88 @@ export default function NovaRecomendacaoPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Title */}
+              
+              {/* Image Upload Area */}
               <div className="space-y-2">
-                <label htmlFor="title" className="text-sm font-medium">
-                  Titulo da Musica
-                </label>
-                <Input
-                  id="title"
-                  placeholder="Ex: Bohemian Rhapsody"
-                  value={formData.title}
-                  onChange={e => updateField('title', e.target.value)}
-                  className={errors.title ? 'border-destructive' : ''}
-                />
-                {errors.title && (
-                  <p className="text-destructive text-sm">{errors.title}</p>
+                <label className="text-sm font-medium">Capa (Opcional)</label>
+                <div 
+                  className={`
+                    border-2 border-dashed rounded-lg p-4 transition-colors text-center cursor-pointer
+                    ${errors.coverImage ? 'border-destructive bg-destructive/5' : 'border-muted hover:border-primary/50 hover:bg-muted/50'}
+                  `}
+                  onClick={() => !previewUrl && fileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                  />
+
+                  {previewUrl ? (
+                    <div className="relative w-40 h-40 mx-auto group">
+                      <img 
+                        src={previewUrl} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover rounded-md shadow-sm"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md">
+                        <Button 
+                          type="button" 
+                          variant="destructive" 
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeImage()
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-8 flex flex-col items-center gap-2 text-muted-foreground">
+                      <div className="p-3 bg-muted rounded-full">
+                        <ImageIcon className="w-6 h-6" />
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-semibold text-primary">Clique para upload</span> ou arraste
+                      </div>
+                      <p className="text-xs">PNG, JPG ou WEBP (max. 5MB)</p>
+                    </div>
+                  )}
+                </div>
+                {errors.coverImage && (
+                  <p className="text-destructive text-sm">{errors.coverImage}</p>
                 )}
               </div>
 
-              {/* Artist */}
-              <div className="space-y-2">
-                <label htmlFor="artist" className="text-sm font-medium">
-                  Artista
-                </label>
-                <Input
-                  id="artist"
-                  placeholder="Ex: Queen"
-                  value={formData.artist}
-                  onChange={e => updateField('artist', e.target.value)}
-                  className={errors.artist ? 'border-destructive' : ''}
-                />
-                {errors.artist && (
-                  <p className="text-destructive text-sm">{errors.artist}</p>
-                )}
+              {/* Title & Artist - Mantidos igual */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="title" className="text-sm font-medium">Titulo</label>
+                  <Input
+                    id="title"
+                    placeholder="Ex: Bohemian Rhapsody"
+                    value={formData.title}
+                    onChange={e => updateField('title', e.target.value)}
+                    className={errors.title ? 'border-destructive' : ''}
+                  />
+                  {errors.title && <p className="text-destructive text-sm">{errors.title}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="artist" className="text-sm font-medium">Artista</label>
+                  <Input
+                    id="artist"
+                    placeholder="Ex: Queen"
+                    value={formData.artist}
+                    onChange={e => updateField('artist', e.target.value)}
+                    className={errors.artist ? 'border-destructive' : ''}
+                  />
+                  {errors.artist && <p className="text-destructive text-sm">{errors.artist}</p>}
+                </div>
               </div>
 
               {/* Genre */}
@@ -216,16 +285,12 @@ export default function NovaRecomendacaoPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.genre && (
-                  <p className="text-destructive text-sm">{errors.genre}</p>
-                )}
+                {errors.genre && <p className="text-destructive text-sm">{errors.genre}</p>}
               </div>
 
               {/* Description */}
               <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">
-                  Por que voce recomenda?
-                </label>
+                <label htmlFor="description" className="text-sm font-medium">Por que recomenda?</label>
                 <Textarea
                   id="description"
                   placeholder="Conte por que essa musica e especial para voce..."
@@ -234,48 +299,30 @@ export default function NovaRecomendacaoPage() {
                   className={`min-h-[120px] ${errors.description ? 'border-destructive' : ''}`}
                   maxLength={500}
                 />
-                <div className="flex justify-between text-sm">
-                  {errors.description ? (
-                    <p className="text-destructive">{errors.description}</p>
-                  ) : (
-                    <span />
-                  )}
-                  <span className="text-muted-foreground">
-                    {formData.description.length}/500
-                  </span>
-                </div>
               </div>
 
               {/* Tags */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Tags (max 5)
-                </label>
+                <label className="text-sm font-medium">Tags (max 5)</label>
                 <div className="flex flex-wrap gap-2">
                   {AVAILABLE_TAGS.map(tag => (
                     <Badge
                       key={tag}
                       variant={formData.tags.includes(tag) ? 'default' : 'outline'}
-                      className="cursor-pointer transition-colors"
+                      className="cursor-pointer transition-colors hover:bg-primary/20"
                       onClick={() => toggleTag(tag)}
                     >
                       {tag}
-                      {formData.tags.includes(tag) && (
-                        <X className="w-3 h-3 ml-1" />
-                      )}
+                      {formData.tags.includes(tag) && <X className="w-3 h-3 ml-1" />}
                     </Badge>
                   ))}
                 </div>
-                {errors.tags && (
-                  <p className="text-destructive text-sm">{errors.tags}</p>
-                )}
+                {errors.tags && <p className="text-destructive text-sm">{errors.tags}</p>}
               </div>
 
-              {/* Media URL (optional) */}
+              {/* Media URL */}
               <div className="space-y-2">
-                <label htmlFor="mediaUrl" className="text-sm font-medium">
-                  Link (opcional)
-                </label>
+                <label htmlFor="mediaUrl" className="text-sm font-medium">Link (opcional)</label>
                 <Input
                   id="mediaUrl"
                   type="url"
@@ -283,9 +330,6 @@ export default function NovaRecomendacaoPage() {
                   value={formData.mediaUrl}
                   onChange={e => updateField('mediaUrl', e.target.value)}
                 />
-                <p className="text-muted-foreground text-xs">
-                  Spotify, YouTube, SoundCloud, etc.
-                </p>
               </div>
 
               {/* Submit */}
@@ -311,7 +355,7 @@ export default function NovaRecomendacaoPage() {
                     </>
                   ) : (
                     <>
-                      <Plus className="w-4 h-4 mr-2" />
+                      <Upload className="w-4 h-4 mr-2" />
                       Publicar
                     </>
                   )}

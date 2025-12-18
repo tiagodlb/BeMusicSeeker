@@ -27,8 +27,8 @@ import {
 } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SidebarContent } from '@/components/sidebar'
 import { getRecommendations, voteRecommendation, type Recommendation } from '@/lib/api/recommendations'
+import { resolveCoverUrl } from '@/utils/image'
 
 function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -71,7 +71,7 @@ function TrendingCard({
           <PositionBadge position={position} />
           <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center shrink-0">
             {rec.music.coverUrl ? (
-              <img src={rec.music.coverUrl} alt={rec.music.title} className="w-full h-full object-cover rounded-lg" />
+              <img src={resolveCoverUrl(rec.music.coverUrl) || ""} alt={rec.music.title} className="w-full h-full object-cover rounded-lg" />
             ) : (
               <Music className="w-7 h-7 text-primary/60" />
             )}
