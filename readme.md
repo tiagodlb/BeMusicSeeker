@@ -78,7 +78,7 @@ prisma/
 ---
 
 ## ⚙️ Rotas/Endpoints da API
-Acesse a documentação completa em: http://localhost:3333/swagger
+Acesse a documentação completa em: http://localhost:3333/openapi
 
 * POST /api/auth/sign-up: Cadastro de usuários.
 * POST /api/auth/sign-in: Autenticação.
